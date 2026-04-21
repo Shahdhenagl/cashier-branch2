@@ -266,9 +266,10 @@ export default function POS() {
         <div className="flex gap-3 p-5 overflow-x-auto border-b border-gray-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/20 hide-scrollbar items-center">
           <button
             onClick={() => setActiveCategory('all')}
+            style={activeCategory === 'all' ? { background: storeSettings.themeColor } : {}}
             className={`px-6 py-2.5 rounded-2xl whitespace-nowrap font-bold transition shadow-sm border ${
               activeCategory === 'all' 
-              ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white border-transparent' 
+              ? 'text-white border-transparent' 
               : 'bg-white dark:bg-slate-800 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700'
             }`}
           >
@@ -278,9 +279,10 @@ export default function POS() {
             <button
               key={c.id}
               onClick={() => setActiveCategory(c.id)}
+              style={activeCategory === c.id ? { background: storeSettings.themeColor } : {}}
               className={`px-6 py-2.5 rounded-2xl whitespace-nowrap font-bold transition shadow-sm border ${
                 activeCategory === c.id 
-                ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white border-transparent' 
+                ? 'text-white border-transparent' 
                 : 'bg-white dark:bg-slate-800 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700'
               }`}
             >
@@ -311,8 +313,8 @@ export default function POS() {
                     <p className="text-xs text-gray-400 dark:text-gray-500 mt-2 font-mono">{product.barcode}</p>
                   </div>
                   <div className="flex items-end justify-between mt-4">
-                    <span className="text-xl font-black text-indigo-600 dark:text-indigo-400">{product.sale_price} <span className="text-sm text-gray-500 dark:text-gray-400">{storeSettings.currency}</span></span>
-                    <div className={`w-10 h-10 rounded-2xl flex items-center justify-center border transition-all ${isOutOfStock ? 'bg-gray-100 text-gray-400 border-gray-200 dark:bg-slate-700 dark:border-slate-600' : 'bg-indigo-50 text-indigo-600 border-indigo-100 dark:bg-slate-700 dark:text-indigo-400 dark:border-slate-600 group-hover:bg-indigo-600 group-hover:text-white group-hover:border-indigo-600'}`}>
+                    <span style={{ color: storeSettings.themeColor }} className="text-xl font-black dark:opacity-90">{product.sale_price} <span className="text-sm text-gray-500 dark:text-gray-400">{storeSettings.currency}</span></span>
+                    <div style={!isOutOfStock ? { backgroundColor: storeSettings.themeColor + '15', color: storeSettings.themeColor, borderColor: storeSettings.themeColor + '30' } : {}} className={`w-10 h-10 rounded-2xl flex items-center justify-center border transition-all ${isOutOfStock ? 'bg-gray-100 text-gray-400 border-gray-200 dark:bg-slate-700 dark:border-slate-600' : ''}`}>
                       <Plus size={20} strokeWidth={3}/>
                     </div>
                   </div>
@@ -325,7 +327,10 @@ export default function POS() {
 
       {/* Cart Sidebar */}
       <div className="w-1/3 min-w-[420px] bg-white dark:bg-slate-800 flex flex-col z-20 shadow-2xl relative border-r border-gray-100 dark:border-slate-800">
-        <div className="p-4 bg-gradient-to-bl from-indigo-700 via-indigo-600 to-purple-800 text-white flex flex-col relative overflow-hidden h-auto rounded-bl-[40px] shadow-lg shadow-indigo-900/20 gap-3">
+        <div
+          style={{ background: `linear-gradient(225deg, ${storeSettings.themeColor}ee, ${storeSettings.themeColor}cc, ${storeSettings.themeColor}99)` }}
+          className="p-4 text-white flex flex-col relative overflow-hidden h-auto rounded-bl-[40px] shadow-lg gap-3"
+        >
           <div className="absolute top-0 left-0 w-full h-full bg-white/5 backdrop-blur-sm"></div>
           <div className="relative flex justify-between items-start">
              <h2 className="text-xl font-black flex items-center gap-2">
@@ -452,7 +457,8 @@ export default function POS() {
               <button
                 onClick={() => doCheckout(false)}
                 disabled={cart.length === 0}
-                className="flex-1 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 disabled:from-gray-300 disabled:to-gray-400 dark:disabled:from-slate-700 dark:disabled:to-slate-700 disabled:text-gray-500 text-white py-4 rounded-2xl font-bold flex items-center justify-center gap-2 transition-all shadow-lg shadow-indigo-500/20 disabled:shadow-none text-base border border-transparent"
+                style={cart.length > 0 ? { background: storeSettings.themeColor } : {}}
+                className="flex-1 disabled:bg-gray-300 dark:disabled:bg-slate-700 disabled:text-gray-500 text-white py-4 rounded-2xl font-bold flex items-center justify-center gap-2 transition-all shadow-lg disabled:shadow-none text-base"
               >
                 <Banknote size={22} />
                 تحصيل ودفع
