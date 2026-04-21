@@ -7,6 +7,7 @@ import Overview from './pages/admin/Overview';
 import Inventory from './pages/admin/Inventory';
 import Invoices from './pages/admin/Invoices';
 import Customers from './pages/admin/Customers';
+import DeferredAccounts from './pages/admin/DeferredAccounts';
 import Settings from './pages/admin/Settings';
 import { useStore } from './store/useStore';
 
@@ -83,6 +84,7 @@ function App() {
             <Route path="inventory" element={<Inventory />} />
             <Route path="invoices" element={<Invoices />} />
             <Route path="customers" element={<Customers />} />
+            <Route path="deferred" element={<DeferredAccounts />} />
             <Route path="settings" element={<Settings />} />
           </Route>
         </Routes>

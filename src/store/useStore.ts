@@ -33,6 +33,8 @@ export interface Order {
   id: string;
   items: OrderItem[];
   total: number;
+  paid_amount: number;
+  type: 'sale' | 'payment';
   date: string;
   customer?: Customer;
 }
@@ -71,7 +73,7 @@ interface CashierStore {
   clearCart: () => void;
 
   // Operations
-  checkout: (total: number, customerDetails?: { name: string; phone: string }) => Promise<string>;
+  checkout: (total: number, customerDetails?: { name: string; phone: string }, paidAmount?: number, type?: 'sale' | 'payment') => Promise<string>;
   processReturn: (orderId: string, productId: string, returnQty: number) => Promise<boolean>;
 
   // Admin
@@ -164,6 +166,8 @@ export const useStore = create<CashierStore>((set, get) => ({
         return {
           id: o.id as string,
           total: o.total as number,
+          paid_amount: (o.paid_amount as number) ?? (o.total as number),
+          type: (o.type as string) as 'sale' | 'payment' ?? 'sale',
           date: o.created_at as string,
           items,
           customer: custRow
@@ -214,9 +218,9 @@ export const useStore = create<CashierStore>((set, get) => ({
   clearCart: () => set({ cart: [] }),
 
   // ── Checkout ───────────────────────────────────────────────
-  checkout: async (total, customerDetails) => {
+  checkout: async (total, customerDetails, paidAmount = total, type = 'sale') => {
     const state = get();
-    if (state.cart.length === 0) return state.activeInvoiceId;
+    if (state.cart.length === 0 && type !== 'payment') return state.activeInvoiceId;
 
     const invoiceId = state.activeInvoiceId;
     let customerId: string | null = null;
@@ -248,7 +252,13 @@ export const useStore = create<CashierStore>((set, get) => ({
     }
 
     // Insert order
-    await supabase.from('orders').insert({ id: invoiceId, total, customer_id: customerId });
+    await supabase.from('orders').insert({ 
+      id: invoiceId, 
+      total, 
+      paid_amount: paidAmount,
+      type,
+      customer_id: customerId 
+    });
 
     // Insert order items
     const itemsPayload = state.cart.map((item) => ({
@@ -277,6 +287,8 @@ export const useStore = create<CashierStore>((set, get) => ({
       id: invoiceId,
       items: state.cart.map((i) => ({ ...i })),
       total,
+      paid_amount: paidAmount,
+      type,
       date: new Date().toISOString(),
       customer: finalCustomer,
     };

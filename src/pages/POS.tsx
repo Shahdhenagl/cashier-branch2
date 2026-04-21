@@ -11,6 +11,7 @@ export default function POS() {
   // Customer details for checkout
   const [customerPhone, setCustomerPhone] = useState('');
   const [customerName, setCustomerName] = useState('');
+  const [paidAmountStr, setPaidAmountStr] = useState('');
   
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [showReturnsModal, setShowReturnsModal] = useState(false);
@@ -63,9 +64,12 @@ export default function POS() {
     const currentCustomerPhone = customerPhone;
     const currentSettings = { ...storeSettings };
 
-    const invoiceId = await checkout(currentTotal, { name: currentCustomerName, phone: currentCustomerPhone });
+    const finalPaidAmount = paidAmountStr === '' ? currentTotal : parseFloat(paidAmountStr) || 0;
+
+    const invoiceId = await checkout(currentTotal, { name: currentCustomerName, phone: currentCustomerPhone }, finalPaidAmount, 'sale');
     setCustomerName('');
     setCustomerPhone('');
+    setPaidAmountStr('');
 
     if (shouldPrint) {
       const printDate = new Date().toLocaleString('ar-SA');
@@ -153,6 +157,9 @@ export default function POS() {
   const subtotal = cart.reduce((sum, item) => sum + item.sale_price * item.quantity, 0);
   const tax = subtotal * (storeSettings.taxRate / 100);
   const total = subtotal + tax;
+
+  const currentPaid = paidAmountStr === '' ? total : parseFloat(paidAmountStr) || 0;
+  const remaining = total - currentPaid;
 
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const phone = e.target.value;
@@ -310,7 +317,7 @@ export default function POS() {
 
       {/* Cart Sidebar */}
       <div className="w-1/3 min-w-[420px] bg-white dark:bg-slate-800 flex flex-col z-20 shadow-2xl relative border-r border-gray-100 dark:border-slate-800">
-        <div className="p-6 bg-gradient-to-bl from-indigo-700 via-indigo-600 to-purple-800 text-white flex flex-col justify-between relative overflow-hidden h-36 rounded-bl-[40px] shadow-lg shadow-indigo-900/20">
+        <div className="p-6 bg-gradient-to-bl from-indigo-700 via-indigo-600 to-purple-800 text-white flex flex-col justify-between relative overflow-hidden h-auto min-h-48 rounded-bl-[40px] shadow-lg shadow-indigo-900/20 gap-4">
           <div className="absolute top-0 left-0 w-full h-full bg-white/5 backdrop-blur-sm"></div>
           <div className="relative flex justify-between items-start">
              <h2 className="text-2xl font-black flex items-center gap-3">
@@ -321,7 +328,28 @@ export default function POS() {
                {cart.length} الأصناف
             </div>
           </div>
-          <div className="relative font-mono text-indigo-100 mt-auto flex items-center gap-2 bg-black/10 w-max px-3 py-1.5 rounded-lg border border-white/10">
+          <div className="relative flex gap-3 text-sm">
+            <div className="flex-1">
+              <input 
+                type="text" 
+                dir="ltr" 
+                value={customerPhone} 
+                onChange={handlePhoneChange} 
+                className="w-full bg-white/20 border border-white/30 placeholder-white/60 py-2 px-3 rounded-lg focus:ring-2 focus:ring-white/50 focus:outline-none transition" 
+                placeholder="رقم الموبايل (اختياري)" 
+              />
+            </div>
+            <div className="flex-1">
+              <input 
+                type="text" 
+                value={customerName} 
+                onChange={e => setCustomerName(e.target.value)} 
+                className="w-full bg-white/20 border border-white/30 placeholder-white/60 py-2 px-3 rounded-lg focus:ring-2 focus:ring-white/50 focus:outline-none transition" 
+                placeholder="اسم العميل..." 
+              />
+            </div>
+          </div>
+          <div className="relative font-mono text-indigo-100 flex items-center gap-2 bg-black/10 w-max px-3 py-1.5 rounded-lg border border-white/10 mt-2">
             <span className="uppercase text-xs tracking-wider opacity-80 font-sans">رقم الفاتورة:</span> <span className="font-bold tracking-widest">{activeInvoiceId}</span>
           </div>
         </div>
@@ -360,49 +388,46 @@ export default function POS() {
           )}
         </div>
 
-        {/* Customer Details */}
-        <div className="bg-slate-50 dark:bg-slate-800/80 p-4 border-t border-gray-100 dark:border-slate-700 z-10">
-          <div className="flex gap-4">
-            <div className="flex-1">
-              <label className="text-xs text-slate-500 mb-1 block font-bold">رقم تليفون العميل <span className="font-normal">(اختياري)</span></label>
-              <input 
-                type="text" 
-                dir="ltr" 
-                value={customerPhone} 
-                onChange={handlePhoneChange} 
-                className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-600 py-2 px-3 rounded-lg focus:ring-2 focus:ring-indigo-500 text-sm focus:outline-none transition" 
-                placeholder="01xxxxxxxxx" 
-              />
-            </div>
-            <div className="flex-1">
-              <label className="text-xs text-slate-500 mb-1 block font-bold">اسم العميل</label>
-              <input 
-                type="text" 
-                value={customerName} 
-                onChange={e => setCustomerName(e.target.value)} 
-                className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-600 py-2 px-3 rounded-lg focus:ring-2 focus:ring-indigo-500 text-sm focus:outline-none transition" 
-                placeholder="اسم العميل..." 
-              />
-            </div>
-          </div>
-        </div>
+
 
         {/* Footer Checkout */}
         <div className="p-6 bg-white dark:bg-slate-800 border-t border-gray-100 dark:border-slate-700 z-10">
-          <div className="space-y-3 mb-6 bg-slate-50 dark:bg-slate-900/50 p-5 rounded-2xl border border-gray-100 dark:border-slate-700">
+          <div className="space-y-3 mb-4 bg-slate-50 dark:bg-slate-900/50 p-5 rounded-2xl border border-gray-100 dark:border-slate-700">
             <div className="flex justify-between text-gray-500 dark:text-gray-400 font-semibold text-sm">
                <span>المجموع الفرعي</span>
               <span>{subtotal.toFixed(2)} {storeSettings.currency}</span>
             </div>
-            <div className="flex justify-between text-gray-500 dark:text-gray-400 font-semibold text-sm pb-4 border-b border-gray-200 dark:border-slate-700">
-              <span>الضريبة ({storeSettings.taxRate}%)</span>
-              <span>{tax.toFixed(2)} {storeSettings.currency}</span>
-            </div>
-            <div className="flex justify-between text-3xl font-black text-gray-800 dark:text-gray-100 pt-2">
+            {storeSettings.taxRate > 0 && (
+              <div className="flex justify-between text-gray-500 dark:text-gray-400 font-semibold text-sm pb-4 border-b border-gray-200 dark:border-slate-700">
+                <span>الضريبة ({storeSettings.taxRate}%)</span>
+                <span>{tax.toFixed(2)} {storeSettings.currency}</span>
+              </div>
+            )}
+            <div className="flex justify-between text-3xl font-black text-gray-800 dark:text-gray-100 pt-2 border-b border-gray-200 dark:border-slate-700 pb-4">
               <span>الإجمالي</span>
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-purple-600 dark:from-indigo-400 dark:to-purple-400">
                 {total.toFixed(2)} <span className="text-lg text-gray-500 dark:text-gray-400 font-bold">{storeSettings.currency}</span>
               </span>
+            </div>
+            
+            <div className="flex gap-4 items-center justify-between pt-2">
+              <div className="flex-1">
+                <label className="text-xs text-slate-500 mb-1 block font-bold">المدفوع</label>
+                <input 
+                  type="number"
+                  dir="ltr"
+                  value={paidAmountStr}
+                  onChange={(e) => setPaidAmountStr(e.target.value)}
+                  placeholder={total.toFixed(2)}
+                  className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 py-2 px-3 rounded-lg focus:ring-2 focus:ring-indigo-500 font-bold text-lg focus:outline-none transition text-left" 
+                />
+              </div>
+              <div className="flex-1 text-left">
+                <label className="text-xs text-slate-500 mb-1 block font-bold text-left">{remaining > 0 ? 'متبقي للعميل (آجل)' : 'الباقي للعميل'}</label>
+                <div className={`text-xl font-bold ${remaining > 0 ? 'text-red-500' : 'text-green-600 dark:text-green-400'}`}>
+                  {Math.abs(remaining).toFixed(2)} <span className="text-sm font-normal">{storeSettings.currency}</span>
+                </div>
+              </div>
             </div>
           </div>
 

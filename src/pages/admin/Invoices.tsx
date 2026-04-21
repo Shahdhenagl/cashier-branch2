@@ -103,6 +103,8 @@ export default function Invoices() {
                 <th className="p-4">التاريخ والوقت</th>
                 <th className="p-4">تفاصيل المنتجات</th>
                 <th className="p-4 text-center border-x border-slate-100 bg-slate-100/50">الإجمالي</th>
+                <th className="p-4 text-center text-green-600">المدفوع</th>
+                <th className="p-4 text-center text-red-500">الباقي عليه</th>
                 <th className="p-4 text-center">الحالة</th>
               </tr>
             </thead>
@@ -143,10 +145,24 @@ export default function Invoices() {
                       <td className="p-4 text-center font-black border-x border-slate-100 bg-slate-50/50">
                         {order.total.toFixed(2)} {storeSettings.currency}
                       </td>
+                      <td className="p-4 text-center font-black text-green-600">
+                        {order.paid_amount.toFixed(2)} {storeSettings.currency}
+                      </td>
+                      <td className="p-4 text-center font-black text-red-500">
+                        {order.type === 'payment' ? '0.00' : Math.max(0, order.total - order.paid_amount).toFixed(2)} {storeSettings.currency}
+                      </td>
                       <td className="p-4 text-center">
-                        {hasReturns ? (
+                        {order.type === 'payment' ? (
+                          <span className="inline-flex items-center gap-1 bg-indigo-100 text-indigo-700 px-3 py-1 rounded-lg text-xs font-bold">
+                            سداد آجل
+                          </span>
+                        ) : hasReturns ? (
                           <span className="inline-flex items-center gap-1 bg-red-100 text-red-600 px-3 py-1 rounded-lg text-xs font-bold">
                             <ArrowRightLeft size={14} /> مرتجع جزئي/كلي
+                          </span>
+                        ) : order.total - order.paid_amount > 0 ? (
+                          <span className="inline-flex items-center gap-1 bg-orange-100 text-orange-700 px-3 py-1 rounded-lg text-xs font-bold">
+                            فاتورة أجل
                           </span>
                         ) : (
                           <span className="inline-flex items-center gap-1 bg-green-100 text-green-600 px-3 py-1 rounded-lg text-xs font-bold">
