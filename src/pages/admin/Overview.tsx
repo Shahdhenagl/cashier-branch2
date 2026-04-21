@@ -19,7 +19,10 @@ export default function Overview() {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 flex items-center gap-6">
-          <div className="w-16 h-16 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-600">
+          <div 
+            style={{ backgroundColor: storeSettings.themeColor + '15', color: storeSettings.themeColor }}
+            className="w-16 h-16 rounded-2xl flex items-center justify-center"
+          >
             <Banknote size={32} />
           </div>
           <div>
@@ -29,7 +32,10 @@ export default function Overview() {
         </div>
 
         <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 flex items-center gap-6">
-          <div className="w-16 h-16 rounded-2xl bg-purple-50 flex items-center justify-center text-purple-600">
+          <div 
+            style={{ backgroundColor: storeSettings.themeColor + '15', color: storeSettings.themeColor }}
+            className="w-16 h-16 rounded-2xl flex items-center justify-center"
+          >
             <ReceiptText size={32} />
           </div>
           <div>

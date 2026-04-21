@@ -108,19 +108,19 @@ export default function Inventory() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="col-span-2">
                   <label className="block text-sm font-bold text-slate-700 mb-1">اسم المنتج</label>
-                  <input type="text" required value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full bg-slate-50 border border-slate-200 py-3 px-4 rounded-xl focus:ring-2 focus:ring-indigo-500" />
+                  <input type="text" required value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} style={{ '--tw-ring-color': storeSettings.themeColor + '40' } as any} className="w-full bg-slate-50 border border-slate-200 py-3 px-4 rounded-xl focus:ring-2 focus:outline-none" />
                 </div>
                 <div className="col-span-2">
                   <label className="block text-sm font-bold text-slate-700 mb-1">الباركود</label>
-                  <input type="text" required dir="ltr" value={formData.barcode} onChange={e => setFormData({...formData, barcode: e.target.value})} className="w-full bg-slate-50 border border-slate-200 py-3 px-4 rounded-xl focus:ring-2 focus:ring-indigo-500 text-left" />
+                  <input type="text" required dir="ltr" value={formData.barcode} onChange={e => setFormData({...formData, barcode: e.target.value})} style={{ '--tw-ring-color': storeSettings.themeColor + '40' } as any} className="w-full bg-slate-50 border border-slate-200 py-3 px-4 rounded-xl focus:ring-2 focus:outline-none text-left" />
                 </div>
                 <div>
                   <label className="block text-sm font-bold text-slate-700 mb-1">سعر الشراء</label>
-                  <input type="number" min="0" step="0.01" required value={formData.purchase_price} onChange={e => setFormData({...formData, purchase_price: parseFloat(e.target.value) || 0})} className="w-full bg-slate-50 border border-slate-200 py-3 px-4 rounded-xl focus:ring-2 focus:ring-indigo-500" />
+                  <input type="number" min="0" step="0.01" required value={formData.purchase_price} onChange={e => setFormData({...formData, purchase_price: parseFloat(e.target.value) || 0})} style={{ '--tw-ring-color': storeSettings.themeColor + '40' } as any} className="w-full bg-slate-50 border border-slate-200 py-3 px-4 rounded-xl focus:ring-2 focus:outline-none" />
                 </div>
                 <div>
                   <label className="block text-sm font-bold text-slate-700 mb-1">سعر البيع</label>
-                  <input type="number" min="0" step="0.01" required value={formData.sale_price} onChange={e => setFormData({...formData, sale_price: parseFloat(e.target.value) || 0})} className="w-full bg-slate-50 border border-slate-200 py-3 px-4 rounded-xl focus:ring-2 focus:ring-indigo-500 border-l-4 border-l-green-500" />
+                  <input type="number" min="0" step="0.01" required value={formData.sale_price} onChange={e => setFormData({...formData, sale_price: parseFloat(e.target.value) || 0})} style={{ '--tw-ring-color': storeSettings.themeColor + '40' } as any} className="w-full bg-slate-50 border border-slate-200 py-3 px-4 rounded-xl focus:ring-2 focus:outline-none border-l-4 border-l-green-500" />
                 </div>
                 <div>
                   <label className="block text-sm font-bold text-slate-700 mb-1">الكمية الافتتاحية للمخزون</label>
@@ -136,7 +136,7 @@ export default function Inventory() {
                 </div>
               </div>
               <div className="pt-4 mt-2 border-t">
-                <button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-xl font-bold transition shadow-lg shrink-0 flex items-center justify-center gap-2">
+                <button type="submit" style={{ backgroundColor: storeSettings.themeColor }} className="w-full text-white py-4 rounded-xl font-bold transition shadow-lg shrink-0 flex items-center justify-center gap-2">
                   <Plus size={20} />
                   حفظ المنتج في قاعدة البيانات
                 </button>
@@ -190,7 +190,7 @@ export default function Inventory() {
               return (
                 <div key={cat.id} className="flex items-center gap-2 bg-white border border-slate-200 rounded-2xl px-4 py-2.5 shadow-sm">
                   <span className="font-bold text-slate-700">{cat.name}</span>
-                  <span className="bg-indigo-50 text-indigo-600 text-xs font-bold px-2 py-0.5 rounded-lg">{count} منتج</span>
+                  <span style={{ backgroundColor: storeSettings.themeColor + '15', color: storeSettings.themeColor }} className="text-xs font-bold px-2 py-0.5 rounded-lg">{count} منتج</span>
                   <button
                     onClick={() => handleDeleteCategory(cat.id, cat.name)}
                     className="text-red-400 hover:text-red-600 hover:bg-red-50 p-1 rounded-lg transition"

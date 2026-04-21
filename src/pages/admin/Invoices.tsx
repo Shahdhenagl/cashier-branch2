@@ -50,7 +50,8 @@ export default function Invoices() {
             <input
               type="text"
               placeholder="ابحث برقم الفاتورة، اسم العميل، أو رقم الهاتف..."
-              className="w-full bg-white border border-slate-200 rounded-xl py-2.5 pr-12 pl-4 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm transition"
+              style={{ '--tw-ring-color': storeSettings.themeColor + '40' } as any}
+              className="w-full bg-white border border-slate-200 rounded-xl py-2.5 pr-12 pl-4 text-sm focus:outline-none focus:ring-2 shadow-sm transition"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
@@ -60,7 +61,8 @@ export default function Invoices() {
             <select 
               value={selectedMonth} 
               onChange={e => setSelectedMonth(e.target.value)} 
-              className="bg-white border border-slate-200 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+              style={{ '--tw-ring-color': storeSettings.themeColor + '40' } as any}
+              className="bg-white border border-slate-200 rounded-xl p-2.5 text-sm focus:ring-2 outline-none"
             >
               <option value="all">كل الشهور</option>
               {Array.from({ length: 12 }, (_, i) => (
@@ -71,7 +73,8 @@ export default function Invoices() {
             <select 
               value={selectedYear} 
               onChange={e => setSelectedYear(e.target.value)} 
-              className="bg-white border border-slate-200 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+              style={{ '--tw-ring-color': storeSettings.themeColor + '40' } as any}
+              className="bg-white border border-slate-200 rounded-xl p-2.5 text-sm focus:ring-2 outline-none"
             >
               <option value="all">كل السنوات</option>
               {years.map(y => <option key={y} value={y}>{y}</option>)}
@@ -89,7 +92,10 @@ export default function Invoices() {
               />
               إظهار الفواتير المرتجعة فقط
             </label>
-            <div className="text-sm text-slate-500 font-bold bg-indigo-50 text-indigo-600 px-5 py-2.5 border border-indigo-100 rounded-xl">
+            <div 
+              style={{ backgroundColor: storeSettings.themeColor + '15', color: storeSettings.themeColor, borderColor: storeSettings.themeColor + '30' }}
+              className="text-sm font-bold px-5 py-2.5 border rounded-xl"
+            >
               إجمالي النتائج: {filteredOrders.length}
             </div>
         </div>
@@ -120,11 +126,11 @@ export default function Invoices() {
                   const hasReturns = order.items.some(i => i.returned_quantity > 0);
                   return (
                     <tr key={order.id} className={`hover:bg-slate-50 transition ${hasReturns ? 'bg-red-50/20' : ''}`}>
-                      <td className="p-4 font-mono font-bold text-indigo-600">{order.id}</td>
+                      <td className="p-4 font-mono font-bold" style={{ color: storeSettings.themeColor }}>{order.id}</td>
                       <td className="p-4">
                         {order.customer ? (
                           <div className="flex flex-col">
-                            <span className="font-bold flex items-center gap-1"><User size={14} className="text-indigo-400" /> {order.customer.name}</span>
+                            <span className="font-bold flex items-center gap-1"><User size={14} style={{ color: storeSettings.themeColor }} /> {order.customer.name}</span>
                             <span className="text-xs text-slate-500 font-mono mt-1" dir="ltr">{order.customer.phone}</span>
                           </div>
                         ) : (
@@ -153,7 +159,7 @@ export default function Invoices() {
                       </td>
                       <td className="p-4 text-center">
                         {order.type === 'payment' ? (
-                          <span className="inline-flex items-center gap-1 bg-indigo-100 text-indigo-700 px-3 py-1 rounded-lg text-xs font-bold">
+                          <span style={{ backgroundColor: storeSettings.themeColor + '15', color: storeSettings.themeColor }} className="inline-flex items-center gap-1 px-3 py-1 rounded-lg text-xs font-bold">
                             سداد آجل
                           </span>
                         ) : hasReturns ? (

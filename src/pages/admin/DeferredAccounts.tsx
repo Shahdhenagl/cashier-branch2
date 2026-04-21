@@ -72,7 +72,7 @@ export default function DeferredAccounts() {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
         <div>
           <h1 className="text-3xl font-black text-slate-900 flex items-center gap-3">
-            <BookUser className="text-indigo-600" size={32} />
+            <BookUser style={{ color: storeSettings.themeColor }} size={32} />
             حسابات الآجل (الديون)
           </h1>
           <p className="text-slate-500 mt-2">إدارة العملاء المتعثرين وتسجيل الدفعات للفواتير الآجلة</p>
@@ -127,7 +127,8 @@ export default function DeferredAccounts() {
                     <td className="py-4 px-6 text-left">
                       <button 
                         onClick={() => handleOpenModal(customer)}
-                        className="inline-flex items-center gap-2 bg-indigo-50 text-indigo-700 hover:bg-indigo-600 hover:text-white px-4 py-2 rounded-xl font-bold transition-colors"
+                        style={{ backgroundColor: storeSettings.themeColor + '15', color: storeSettings.themeColor }}
+                        className="inline-flex items-center gap-2 px-4 py-2 rounded-xl font-bold transition-all hover:bg-opacity-25"
                       >
                         <CreditCard size={18} /> سداد
                       </button>
@@ -150,8 +151,11 @@ export default function DeferredAccounts() {
       {isModalOpen && selectedCustomer && (
         <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl shadow-xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
-            <div className="bg-gradient-to-l from-indigo-600 to-purple-600 p-6 text-white flex justify-between items-center">
-              <h2 className="text-xl font-black flex items-center gap-2">
+            <div 
+              style={{ background: `linear-gradient(160deg, ${storeSettings.themeColor} 0%, ${storeSettings.themeColor}dd 100%)` }}
+              className="p-6 text-white flex justify-between items-center"
+            >
+              <h2 className="text-xl font-black flex items-center gap-2 drop-shadow">
                 <Banknote /> تسجيل دفعة سداد
               </h2>
               <button onClick={() => setIsModalOpen(false)} className="hover:bg-white/20 p-2 rounded-xl transition">
@@ -185,7 +189,8 @@ export default function DeferredAccounts() {
               <div className="flex gap-3 pt-2">
                 <button
                   onClick={handleProcessPayment}
-                  className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white py-3.5 rounded-xl font-bold transition shadow-md shadow-indigo-200"
+                  style={{ backgroundColor: storeSettings.themeColor, boxShadow: `0 4px 12px ${storeSettings.themeColor}40` }}
+                  className="flex-1 text-white py-4 rounded-xl font-bold transition-all hover:bg-opacity-90"
                 >
                   إتمام عملية الدفع
                 </button>

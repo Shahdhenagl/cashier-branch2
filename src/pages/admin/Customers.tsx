@@ -26,7 +26,8 @@ export default function Customers() {
             <input
               type="text"
               placeholder="ابحث باسم العميل أو رقم الهاتف..."
-              className="w-full bg-white border border-slate-200 rounded-xl py-2.5 pr-12 pl-4 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm"
+              style={{ '--tw-ring-color': storeSettings.themeColor + '40' } as any}
+              className="w-full bg-white border border-slate-200 rounded-xl py-2.5 pr-12 pl-4 text-sm focus:outline-none focus:ring-2 shadow-sm"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
@@ -58,10 +59,10 @@ export default function Customers() {
                   const customerOrders = orders.filter(o => o.customer?.id === customer.id).length;
                   return (
                     <tr key={customer.id} className="hover:bg-slate-50 transition">
-                      <td className="p-4 font-mono font-bold text-indigo-600" dir="ltr">{customer.phone}</td>
+                      <td className="p-4 font-mono font-bold" style={{ color: storeSettings.themeColor }} dir="ltr">{customer.phone}</td>
                       <td className="p-4 font-bold">{customer.name}</td>
                       <td className="p-4 text-center">
-                        <span className="bg-indigo-50 text-indigo-600 px-3 py-1 rounded-lg font-bold">
+                        <span style={{ backgroundColor: storeSettings.themeColor + '15', color: storeSettings.themeColor }} className="px-3 py-1 rounded-lg font-bold">
                           {customerOrders} طلب
                         </span>
                       </td>

@@ -34,10 +34,11 @@ export default function AdminLayout() {
             <NavLink
               key={item.path}
               to={item.path}
+              style={({ isActive }) => isActive ? { background: storeSettings.themeColor } : {}}
               className={({ isActive }) =>
                 `flex items-center gap-3 px-4 py-3 rounded-xl transition ${
                   isActive
-                    ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold shadow-lg'
+                    ? 'text-white font-bold shadow-lg'
                     : 'hover:bg-slate-800 hover:text-white'
                 }`
               }
@@ -59,9 +60,11 @@ export default function AdminLayout() {
         </div>
       </div>
 
-      {/* Main Content Area */}
       <div className="flex-1 overflow-y-auto bg-slate-50 relative">
-        <div className="absolute top-0 left-0 w-full h-64 bg-indigo-600/5 -z-10"></div>
+        <div 
+          style={{ backgroundColor: storeSettings.themeColor + '10' }}
+          className="absolute top-0 left-0 w-full h-64 -z-10"
+        ></div>
         <Outlet />
       </div>
     </div>
