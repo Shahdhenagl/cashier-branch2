@@ -171,7 +171,10 @@ export default function POS() {
       setCustomerName(existingCust.name);
       
       const cOrders = orders.filter(o => o.customer?.id === existingCust.id);
-      const cDebt = cOrders.reduce((sum, o) => sum + (o.total - o.paid_amount), 0);
+      const cDebt = cOrders.reduce((sum, o) => {
+        const returnedValue = o.items.reduce((rSum, item) => rSum + (item.returned_quantity * item.sale_price), 0);
+        return sum + ((o.total - returnedValue) - o.paid_amount);
+      }, 0);
       setCustomerDebt(cDebt > 0 ? cDebt : 0);
     } else {
       setCustomerDebt(0);
@@ -248,7 +251,8 @@ export default function POS() {
               <input
                 type="text"
                 placeholder="ابحث باسم المنتج..."
-                className="w-full bg-slate-100 dark:bg-slate-800 dark:text-white border-none rounded-2xl py-3.5 pr-12 pl-4 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-inner transition"
+                style={{ '--tw-ring-color': storeSettings.themeColor + '40' } as any}
+                className="w-full bg-slate-100 dark:bg-slate-800 dark:text-white border-none rounded-2xl py-3.5 pr-12 pl-4 text-sm focus:outline-none focus:ring-2 shadow-inner transition"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />

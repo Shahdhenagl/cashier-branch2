@@ -109,8 +109,9 @@ export default function Invoices() {
                 <th className="p-4">التاريخ والوقت</th>
                 <th className="p-4">تفاصيل المنتجات</th>
                 <th className="p-4 text-center border-x border-slate-100 bg-slate-100/50">الإجمالي</th>
+                <th className="p-4 text-center text-orange-600">قيمة المرتجع</th>
                 <th className="p-4 text-center text-green-600">المدفوع</th>
-                <th className="p-4 text-center text-red-500">الباقي عليه</th>
+                <th className="p-4 text-center text-red-500 font-black">الباقي عليه</th>
                 <th className="p-4 text-center">الحالة</th>
               </tr>
             </thead>
@@ -151,11 +152,15 @@ export default function Invoices() {
                       <td className="p-4 text-center font-black border-x border-slate-100 bg-slate-50/50">
                         {order.total.toFixed(2)} {storeSettings.currency}
                       </td>
+                      <td className="p-4 text-center font-bold text-orange-600">
+                        {order.items.reduce((sum, i) => sum + (i.returned_quantity * i.sale_price), 0).toFixed(2)} {storeSettings.currency}
+                      </td>
                       <td className="p-4 text-center font-black text-green-600">
                         {order.paid_amount.toFixed(2)} {storeSettings.currency}
                       </td>
                       <td className="p-4 text-center font-black text-red-500">
-                        {order.type === 'payment' ? '0.00' : Math.max(0, order.total - order.paid_amount).toFixed(2)} {storeSettings.currency}
+                        {order.type === 'payment' ? '0.00' : 
+                          Math.max(0, (order.total - order.items.reduce((sum, i) => sum + (i.returned_quantity * i.sale_price), 0)) - order.paid_amount).toFixed(2)} {storeSettings.currency}
                       </td>
                       <td className="p-4 text-center">
                         {order.type === 'payment' ? (

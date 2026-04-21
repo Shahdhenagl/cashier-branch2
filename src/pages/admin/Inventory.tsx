@@ -219,13 +219,14 @@ export default function Inventory() {
         <div className="p-4 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
           <div className="relative w-1/3 min-w-[300px]">
             <Search className="absolute right-4 top-3 text-slate-400" size={20} />
-            <input
-              type="text"
-              placeholder="ابحث باسم المنتج أو الباركود..."
-              className="w-full bg-white border border-slate-200 rounded-xl py-2.5 pr-12 pl-4 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
+              <input
+                type="text"
+                placeholder="ابحث باسم المنتج أو الباركود..."
+                style={{ '--tw-ring-color': storeSettings.themeColor + '40' } as any}
+                className="w-full bg-white border border-slate-200 rounded-xl py-2.5 pr-12 pl-4 text-sm focus:outline-none focus:ring-2 shadow-sm"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
           </div>
           <div className="text-sm text-slate-500 font-bold bg-white px-4 py-2 border border-slate-200 rounded-xl">
             إجمالي المنتجات: {products.length}
@@ -258,7 +259,7 @@ export default function Inventory() {
                     <td className="p-4 text-center">{product.purchase_price} {storeSettings.currency}</td>
                     
                     <td className="p-4 text-center border-x border-slate-100 bg-slate-50/50">
-                      <button onClick={() => handleEditPrice(product)} className="flex items-center justify-center gap-2 w-full hover:text-indigo-600 transition group font-black">
+                      <button onClick={() => handleEditPrice(product)} style={{ '--hover-color': storeSettings.themeColor } as any} className="flex items-center justify-center gap-2 w-full hover:text-[var(--hover-color)] transition group font-black">
                         {product.sale_price} {storeSettings.currency}
                         <Edit2 size={14} className="opacity-0 group-hover:opacity-100" />
                       </button>
@@ -267,7 +268,8 @@ export default function Inventory() {
                     <td className="p-4 text-center border-l border-slate-100 bg-slate-50/50">
                       <button 
                         onClick={() => handleEditStock(product)} 
-                        className={`flex items-center justify-center gap-2 w-full font-bold px-3 py-1.5 rounded-lg transition group ${isLowStock ? 'bg-red-50 text-red-600' : 'hover:bg-indigo-50 hover:text-indigo-600'}`}
+                        style={{ '--hover-bg': storeSettings.themeColor + '15', '--hover-text': storeSettings.themeColor } as any}
+                        className={`flex items-center justify-center gap-2 w-full font-bold px-3 py-1.5 rounded-lg transition group ${isLowStock ? 'bg-red-50 text-red-600' : 'hover:bg-[var(--hover-bg)] hover:text-[var(--hover-text)]'}`}
                       >
                         {product.stock_quantity}
                         <Edit2 size={14} className="opacity-0 group-hover:opacity-100" />

@@ -35,7 +35,7 @@ export default function Settings() {
 
       <form onSubmit={handleSubmit} className="bg-white p-8 rounded-3xl shadow-sm border border-slate-100 space-y-6">
         <div className="flex items-center justify-center mb-6">
-          <img src={formData.logo} alt="Logo Preview" className="w-24 h-24 rounded-2xl border-2 border-dashed border-indigo-200 object-cover p-1 bg-slate-50" />
+          <img src={formData.logo} alt="Logo Preview" style={{ borderColor: formData.themeColor + '40' }} className="w-24 h-24 rounded-2xl border-2 border-dashed object-cover p-1 bg-slate-50" />
         </div>
 
         <div className="grid grid-cols-2 gap-6">
@@ -45,7 +45,8 @@ export default function Settings() {
               type="text" 
               value={formData.name}
               onChange={(e) => setFormData({...formData, name: e.target.value})}
-              className="w-full bg-slate-50 border border-slate-200 py-3 px-4 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none transition"
+              className="w-full bg-slate-50 border border-slate-200 py-3 px-4 rounded-xl focus:ring-2 focus:outline-none transition"
+              style={{ '--tw-ring-color': formData.themeColor + '40' } as any}
             />
           </div>
           
@@ -57,11 +58,15 @@ export default function Settings() {
                 dir="ltr"
                 value={formData.logo.startsWith('data:image') ? 'صورة مرفوعة (جارِ العرض)' : formData.logo}
                 onChange={(e) => setFormData({...formData, logo: e.target.value})}
-                className="flex-1 bg-slate-50 border border-slate-200 py-3 px-4 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none transition text-left disabled:opacity-50"
+                className="flex-1 bg-slate-50 border border-slate-200 py-3 px-4 rounded-xl focus:ring-2 focus:outline-none transition text-left disabled:opacity-50"
+                style={{ '--tw-ring-color': formData.themeColor + '40' } as any}
                 disabled={formData.logo.startsWith('data:image')}
                 placeholder="https://..."
               />
-              <label className="cursor-pointer bg-white border border-indigo-200 text-indigo-600 hover:bg-indigo-50 px-5 py-3 rounded-xl font-bold transition whitespace-nowrap flex items-center justify-center">
+              <label 
+                style={{ borderColor: formData.themeColor + '40', color: formData.themeColor }}
+                className="cursor-pointer bg-white border hover:bg-slate-50 px-5 py-3 rounded-xl font-bold transition whitespace-nowrap flex items-center justify-center"
+              >
                 رفع صورة
                 <input 
                   type="file" 
@@ -89,7 +94,8 @@ export default function Settings() {
               type="text" 
               value={formData.currency}
               onChange={(e) => setFormData({...formData, currency: e.target.value})}
-              className="w-full bg-slate-50 border border-slate-200 py-3 px-4 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none transition"
+              className="w-full bg-slate-50 border border-slate-200 py-3 px-4 rounded-xl focus:ring-2 focus:outline-none transition"
+              style={{ '--tw-ring-color': formData.themeColor + '40' } as any}
               placeholder="مثال: ر.س , ج.م , $"
             />
           </div>
@@ -157,7 +163,7 @@ export default function Settings() {
         </div>
 
         <div className="pt-6 border-t border-slate-100 flex justify-end">
-          <button type="submit" className="bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-3 rounded-xl font-bold transition shadow-lg shadow-indigo-200">
+          <button type="submit" style={{ backgroundColor: formData.themeColor, boxShadow: `0 4px 12px ${formData.themeColor}40` }} className="text-white px-8 py-3 rounded-xl font-bold transition hover:opacity-90">
             حفظ التغييرات
           </button>
         </div>
