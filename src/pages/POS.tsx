@@ -208,29 +208,82 @@ export default function POS() {
                 <button onClick={handleSearchOrder} className="bg-red-500 hover:bg-red-600 text-white px-6 py-3 rounded-xl font-bold transition shadow-lg shrink-0">بحث برقم الفاتورة</button>
               </div>
 
-              {activeReturnOrder && (
-                <div className="mt-4 flex-1 border border-gray-200 dark:border-slate-700 flex flex-col rounded-xl overflow-hidden">
-                  <div className="bg-gray-100 dark:bg-slate-700 p-4 flex justify-between items-center border-b border-gray-200 dark:border-slate-600">
-                    <span className="font-bold text-gray-700 dark:text-gray-200 font-mono tracking-wider">{activeReturnOrder.id}</span>
-                    <span className="text-sm font-bold text-gray-500 dark:text-gray-300">الإجمالي: {activeReturnOrder.total.toFixed(2)} {storeSettings.currency}</span>
-                  </div>
-                  <div className="p-4 space-y-3 max-h-72 overflow-y-auto hide-scrollbar">
-                    {activeReturnOrder.items.map((item: any) => (
-                      <div key={item.id} className="flex justify-between items-center p-4 bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-600 rounded-xl shadow-sm">
-                        <div className="flex flex-col">
-                          <span className="font-bold text-md text-gray-800 dark:text-gray-100">{item.name}</span>
-                          <span className="text-sm text-gray-500 dark:text-gray-400 mt-1">الكمية المسجلة: {item.quantity} | المسترجع: <span className="text-red-500 font-bold">{item.returned_quantity}</span></span>
-                        </div>
-                        <button 
-                          disabled={item.quantity === item.returned_quantity}
-                          onClick={() => handleReturnItem(item.id)} 
-                          className="bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 hover:bg-red-100 px-5 py-2.5 rounded-xl text-sm font-bold disabled:opacity-50 transition border border-red-100 dark:border-red-900/50"
-                        >إرجاع</button>
+              {activeReturnOrder && (() => {
+                const initialDebt = Math.max(0, activeReturnOrder.total - activeReturnOrder.paid_amount);
+                const totalReturnedValue = activeReturnOrder.items.reduce((sum: number, item: any) => sum + (item.returned_quantity * item.sale_price), 0);
+                const cashRefund = Math.max(0, totalReturnedValue - initialDebt);
+                const debtReduction = Math.min(totalReturnedValue, initialDebt);
+                
+                return (
+                  <>
+                    {/* Financial Summary Card */}
+                    <div className="bg-slate-50 dark:bg-slate-900/50 rounded-2xl p-4 border border-slate-200 dark:border-slate-700 grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                      <div className="flex flex-col">
+                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">إجمالي الفاتورة</span>
+                        <span className="text-sm font-black text-slate-800 dark:text-slate-200">{activeReturnOrder.total.toFixed(2)} {storeSettings.currency}</span>
                       </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+                      <div className="flex flex-col">
+                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">المبلغ المدفوع</span>
+                        <span className="text-sm font-black text-green-600 dark:text-green-400">{activeReturnOrder.paid_amount.toFixed(2)} {storeSettings.currency}</span>
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">مديونية الفاتورة</span>
+                        <span className="text-sm font-black text-red-600 dark:text-red-400">{initialDebt.toFixed(2)} {storeSettings.currency}</span>
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">إجمالي المرتجع</span>
+                        <span className="text-sm font-black text-orange-600 dark:text-orange-400">{totalReturnedValue.toFixed(2)} {storeSettings.currency}</span>
+                      </div>
+                    </div>
+
+                    {/* Action/Result Status */}
+                    <div className="flex flex-col gap-2 mb-4">
+                      {debtReduction > 0 && (
+                        <div className="bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 p-3 rounded-xl border border-blue-100 dark:border-blue-800/50 flex justify-between items-center text-sm">
+                          <span className="font-bold flex items-center gap-2 italic">✓ خصم من مديونية الفاتورة:</span>
+                          <span className="font-black text-base">{debtReduction.toFixed(2)} {storeSettings.currency}</span>
+                        </div>
+                      )}
+                      {cashRefund > 0 ? (
+                        <div className="bg-emerald-500 text-white p-4 rounded-xl shadow-lg shadow-emerald-200 dark:shadow-none flex justify-between items-center animate-pulse">
+                          <div className="flex items-center gap-3">
+                            <div className="bg-white/20 p-2 rounded-lg"><Banknote size={24} /></div>
+                            <span className="font-black text-lg">المبلغ المستحق رده (كاش):</span>
+                          </div>
+                          <span className="text-2xl font-black">{cashRefund.toFixed(2)} {storeSettings.currency}</span>
+                        </div>
+                      ) : initialDebt > 0 && (
+                        <div className="bg-orange-50 dark:bg-orange-900/20 text-orange-700 dark:text-orange-300 p-3 rounded-xl border border-orange-100 dark:border-orange-800/50 flex justify-between items-center text-sm italic">
+                          <span>المتبقي من مديونية الفاتورة:</span>
+                          <span className="font-black">{(initialDebt - totalReturnedValue).toFixed(2)} {storeSettings.currency}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex-1 border border-gray-200 dark:border-slate-700 flex flex-col rounded-xl overflow-hidden">
+                      <div className="bg-gray-100 dark:bg-slate-700 p-4 flex justify-between items-center border-b border-gray-200 dark:border-slate-600">
+                        <span className="font-bold text-gray-700 dark:text-gray-200 font-mono tracking-wider">الأصناف المتاحة للإرجاع</span>
+                        <span className="text-xs font-bold px-2 py-1 bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-200 dark:border-slate-600">رقم الفاتورة: #{activeReturnOrder.id}</span>
+                      </div>
+                      <div className="p-4 space-y-3 max-h-72 overflow-y-auto hide-scrollbar">
+                        {activeReturnOrder.items.map((item: any) => (
+                          <div key={item.id} className="flex justify-between items-center p-4 bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-600 rounded-xl shadow-sm hover:shadow-md transition-shadow">
+                            <div className="flex flex-col">
+                              <span className="font-bold text-md text-gray-800 dark:text-gray-100">{item.name}</span>
+                              <span className="text-sm text-gray-500 dark:text-gray-400 mt-1">الكمية المسجلة: {item.quantity} | المسترجع: <span className="text-red-500 font-bold">{item.returned_quantity}</span></span>
+                            </div>
+                            <button 
+                              disabled={item.quantity === item.returned_quantity}
+                              onClick={() => handleReturnItem(item.id)} 
+                              className="bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 hover:bg-red-100 px-5 py-2.5 rounded-xl text-sm font-bold disabled:opacity-50 transition border border-red-100 dark:border-red-900/50"
+                            >إرجاع</button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                );
+              })()}
             </div>
           </div>
         </div>
