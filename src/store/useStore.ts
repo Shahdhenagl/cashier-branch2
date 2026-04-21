@@ -261,11 +261,13 @@ export const useStore = create<CashierStore>((set, get) => ({
       }
     }
 
+    const savedPaidAmount = Math.min(total, paidAmount);
+
     // Insert order
     const { error: orderError } = await supabase.from('orders').insert({ 
       id: invoiceId, 
       total, 
-      paid_amount: paidAmount,
+      paid_amount: savedPaidAmount,
       type,
       customer_id: customerId 
     });
@@ -306,7 +308,7 @@ export const useStore = create<CashierStore>((set, get) => ({
       id: invoiceId,
       items: state.cart.map((i) => ({ ...i })),
       total,
-      paid_amount: paidAmount,
+      paid_amount: savedPaidAmount,
       type,
       date: new Date().toISOString(),
       customer: finalCustomer,
