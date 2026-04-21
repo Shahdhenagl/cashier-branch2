@@ -1,10 +1,12 @@
 import { useState } from 'react';
 import { useStore, type Product } from '../../store/useStore';
-import { Plus, Edit2, Trash2, Search, X } from 'lucide-react';
+import { Plus, Edit2, Trash2, Search, X, Tag } from 'lucide-react';
 
 export default function Inventory() {
   const { products, categories, storeSettings, addProduct, deleteProduct, updateProduct } = useStore();
   const [searchQuery, setSearchQuery] = useState('');
+  const [newCategoryName, setNewCategoryName] = useState('');
+  const [showCatForm, setShowCatForm] = useState(false);
   
   // Modal State
   const [showAddModal, setShowAddModal] = useState(false);
@@ -23,6 +25,30 @@ export default function Inventory() {
     if (confirm(`هل أنت متأكد من حذف المنتج: ${name}؟`)) {
       deleteProduct(id);
     }
+  };
+
+  const handleAddCategory = async () => {
+    const name = newCategoryName.trim();
+    if (!name) return;
+    const { supabase } = await import('../../lib/supabase');
+    const { data } = await supabase.from('categories').insert({ name }).select().single();
+    if (data) {
+      useStore.setState(s => ({ categories: [...s.categories, data as any] }));
+      setNewCategoryName('');
+      setShowCatForm(false);
+    }
+  };
+
+  const handleDeleteCategory = async (id: string, name: string) => {
+    const count = products.filter(p => p.category_id === id).length;
+    if (count > 0) {
+      alert(`لا يمكن حذف تصنيف "${name}" لأن به ${count} منتج. احذف المنتجات أولاً.`);
+      return;
+    }
+    if (!confirm(`هل أنت متأكد من حذف تصنيف "${name}"؟`)) return;
+    const { supabase } = await import('../../lib/supabase');
+    await supabase.from('categories').delete().eq('id', id);
+    useStore.setState(s => ({ categories: s.categories.filter(c => c.id !== id) }));
   };
 
   const handleEditStock = (product: Product) => {
@@ -120,15 +146,72 @@ export default function Inventory() {
         </div>
       )}
 
-      {/* DASHBOARD CONTENT */}
-      <div className="flex justify-between items-end mb-8">
-        <div>
-          <h1 className="text-3xl font-black text-slate-800">المخزون والمنتجات</h1>
-          <p className="text-slate-500 mt-2">إدارة قاعدة بيانات المنتجات وتحديث الكميات</p>
+      {/* CATEGORIES SECTION */}
+      <div className="mb-8">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl font-black text-slate-800 flex items-center gap-2">
+            <Tag size={22} className="text-indigo-500" />
+            التصنيفات
+          </h2>
+          <button
+            onClick={() => setShowCatForm(!showCatForm)}
+            style={{ backgroundColor: storeSettings.themeColor }}
+            className="text-white px-4 py-2 rounded-xl font-bold flex items-center gap-2 text-sm"
+          >
+            <Plus size={16} /> إضافة تصنيف
+          </button>
         </div>
-        <button onClick={() => setShowAddModal(true)} className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-xl font-bold transition flex items-center gap-2 shadow-lg shadow-indigo-200">
+
+        {showCatForm && (
+          <div className="flex gap-2 mb-4">
+            <input
+              type="text"
+              value={newCategoryName}
+              onChange={e => setNewCategoryName(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleAddCategory()}
+              placeholder="اسم التصنيف الجديد..."
+              className="flex-1 bg-white border border-slate-200 rounded-xl py-2.5 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm"
+              autoFocus
+            />
+            <button onClick={handleAddCategory} style={{ backgroundColor: storeSettings.themeColor }} className="text-white px-5 rounded-xl font-bold text-sm">حفظ</button>
+            <button onClick={() => { setShowCatForm(false); setNewCategoryName(''); }} className="bg-slate-100 text-slate-600 px-4 rounded-xl font-bold text-sm">إلغاء</button>
+          </div>
+        )}
+
+        {categories.length === 0 ? (
+          <div className="bg-white border border-dashed border-slate-200 rounded-2xl p-6 text-center text-slate-400">
+            <Tag size={32} className="mx-auto mb-2 opacity-40" />
+            <p className="font-semibold">لا توجد تصنيفات بعد - أضف تصنيفات أولاً لتستطيع إضافة منتجات</p>
+          </div>
+        ) : (
+          <div className="flex flex-wrap gap-3">
+            {categories.map(cat => {
+              const count = products.filter(p => p.category_id === cat.id).length;
+              return (
+                <div key={cat.id} className="flex items-center gap-2 bg-white border border-slate-200 rounded-2xl px-4 py-2.5 shadow-sm">
+                  <span className="font-bold text-slate-700">{cat.name}</span>
+                  <span className="bg-indigo-50 text-indigo-600 text-xs font-bold px-2 py-0.5 rounded-lg">{count} منتج</span>
+                  <button
+                    onClick={() => handleDeleteCategory(cat.id, cat.name)}
+                    className="text-red-400 hover:text-red-600 hover:bg-red-50 p-1 rounded-lg transition"
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* DASHBOARD CONTENT */}
+      <div className="flex justify-between items-end mb-6">
+        <div>
+          <h2 className="text-xl font-black text-slate-800">المنتجات</h2>
+        </div>
+        <button onClick={() => setShowAddModal(true)} style={{ backgroundColor: storeSettings.themeColor }} className="text-white px-6 py-3 rounded-xl font-bold transition flex items-center gap-2 shadow-lg">
           <Plus size={20} />
-          إضافة منتج 
+          إضافة منتج
         </button>
       </div>
 
