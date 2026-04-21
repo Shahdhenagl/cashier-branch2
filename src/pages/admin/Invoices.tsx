@@ -126,6 +126,9 @@ export default function Invoices() {
               ) : (
                 filteredOrders.map((order) => {
                   const hasReturns = order.items.some(i => i.returned_quantity > 0);
+                  const returnedValue = order.items.reduce((sum, i) => sum + (i.returned_quantity * i.sale_price), 0);
+                  const effectiveDebt = order.type === 'payment' ? 0 : Math.max(0, (order.total - returnedValue) - order.paid_amount);
+
                   return (
                     <tr key={order.id} className={`hover:bg-slate-50 transition ${hasReturns ? 'bg-red-50/20' : ''}`}>
                       <td className="p-4 font-mono font-bold" style={{ color: storeSettings.themeColor }}>{order.id}</td>
@@ -154,14 +157,13 @@ export default function Invoices() {
                         {order.total.toFixed(2)} {storeSettings.currency}
                       </td>
                       <td className="p-4 text-center font-bold text-orange-600">
-                        {order.items.reduce((sum, i) => sum + (i.returned_quantity * i.sale_price), 0).toFixed(2)} {storeSettings.currency}
+                        {returnedValue.toFixed(2)} {storeSettings.currency}
                       </td>
                       <td className="p-4 text-center font-black text-green-600">
                         {order.paid_amount.toFixed(2)} {storeSettings.currency}
                       </td>
                       <td className="p-4 text-center font-black text-red-500">
-                        {order.type === 'payment' ? '0.00' : 
-                          Math.max(0, (order.total - order.items.reduce((sum, i) => sum + (i.returned_quantity * i.sale_price), 0)) - order.paid_amount).toFixed(2)} {storeSettings.currency}
+                        {effectiveDebt.toFixed(2)} {storeSettings.currency}
                       </td>
                       <td className="p-4 text-center">
                         {order.type === 'payment' ? (
