@@ -14,71 +14,60 @@ import { useStore } from './store/useStore';
 function ThemeInjector() {
   const { storeSettings } = useStore();
   const hex = storeSettings.themeColor || '#4f46e5';
-  const r = parseInt(hex.slice(1, 3), 16) || 79;
-  const g = parseInt(hex.slice(3, 5), 16) || 70;
-  const b = parseInt(hex.slice(5, 7), 16) || 229;
 
-  return (
-    <style>
-      {`
-        :root { --tc: ${hex}; --tr: ${r}; --tg: ${g}; --tb: ${b}; }
+  useEffect(() => {
+    const r = parseInt(hex.slice(1, 3), 16) || 79;
+    const g = parseInt(hex.slice(3, 5), 16) || 70;
+    const b = parseInt(hex.slice(5, 7), 16) || 229;
 
-        /* Backgrounds */
-        .bg-indigo-50  { background-color: rgba(${r},${g},${b},0.08) !important; }
-        .bg-indigo-100 { background-color: rgba(${r},${g},${b},0.15) !important; }
-        .bg-indigo-500 { background-color: ${hex} !important; }
-        .bg-indigo-600 { background-color: ${hex} !important; }
-        .bg-indigo-700 { background-color: rgba(${r},${g},${b},0.85) !important; }
-        .hover\\:bg-indigo-50:hover  { background-color: rgba(${r},${g},${b},0.08) !important; }
-        .hover\\:bg-indigo-600:hover { background-color: ${hex} !important; }
-        .hover\\:bg-indigo-700:hover { background-color: rgba(${r},${g},${b},0.85) !important; }
-        
-        /* Text */
-        .text-indigo-400 { color: rgba(${r},${g},${b},0.75) !important; }
-        .text-indigo-500 { color: rgba(${r},${g},${b},0.9) !important; }
-        .text-indigo-600 { color: ${hex} !important; }
-        .text-indigo-700 { color: rgba(${r},${g},${b},0.85) !important; }
-        .hover\\:text-indigo-600:hover { color: ${hex} !important; }
-        
-        /* Borders */
-        .border-indigo-100 { border-color: rgba(${r},${g},${b},0.2) !important; }
-        .border-indigo-200 { border-color: rgba(${r},${g},${b},0.3) !important; }
-        .border-indigo-500 { border-color: ${hex} !important; }
-        .border-indigo-600 { border-color: ${hex} !important; }
-        
-        /* Gradients - from */
-        .from-indigo-500, .from-indigo-600, .from-indigo-700 {
-          --tw-gradient-from: ${hex} !important;
-          --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to, rgba(${r},${g},${b},0)) !important;
-        }
-        .via-indigo-600 {
-          --tw-gradient-stops: var(--tw-gradient-from), ${hex}, var(--tw-gradient-to, rgba(${r},${g},${b},0)) !important;
-        }
-        /* Gradients - to purple (make same as theme for unified look) */
-        .to-purple-600, .to-purple-700, .to-purple-800 {
-          --tw-gradient-to: rgba(${r},${g},${b},0.8) !important;
-        }
-        .hover\\:from-indigo-700:hover { --tw-gradient-from: rgba(${r},${g},${b},0.9) !important; }
-        .hover\\:to-purple-700:hover   { --tw-gradient-to: rgba(${r},${g},${b},0.8) !important; }
-        
-        /* Focus ring */
-        .focus\\:ring-indigo-500:focus { --tw-ring-color: rgba(${r},${g},${b},0.5) !important; }
-        .focus\\:ring-2:focus { --tw-ring-color: rgba(${r},${g},${b},0.5) !important; }
-        
-        /* Shadow */
-        .shadow-indigo-200, .shadow-indigo-500\/20, .shadow-indigo-900\/20 {
-          --tw-shadow-color: rgba(${r},${g},${b},0.25) !important;
-          --tw-shadow: var(--tw-shadow-colored) !important;
-        }
-        
-        /* Dark mode variants */
-        .dark .dark\\:text-indigo-400 { color: rgba(${r},${g},${b},0.75) !important; }
-        .dark .dark\\:from-indigo-400 { --tw-gradient-from: rgba(${r},${g},${b},0.75) !important; }
-        .dark .dark\\:to-purple-400   { --tw-gradient-to: rgba(${r},${g},${b},0.6) !important; }
-      `}
-    </style>
-  );
+    let el = document.getElementById('cashier-theme') as HTMLStyleElement | null;
+    if (!el) {
+      el = document.createElement('style');
+      el.id = 'cashier-theme';
+      document.head.appendChild(el);
+    }
+
+    el.textContent = `
+      .bg-indigo-50  { background-color: rgba(${r},${g},${b},0.08) !important; }
+      .bg-indigo-100 { background-color: rgba(${r},${g},${b},0.15) !important; }
+      .bg-indigo-500 { background-color: ${hex} !important; }
+      .bg-indigo-600 { background-color: ${hex} !important; }
+      .bg-indigo-700 { background-color: rgba(${r},${g},${b},0.85) !important; }
+      .hover\\:bg-indigo-50:hover  { background-color: rgba(${r},${g},${b},0.08) !important; }
+      .hover\\:bg-indigo-600:hover { background-color: ${hex} !important; }
+      .hover\\:bg-indigo-700:hover { background-color: rgba(${r},${g},${b},0.85) !important; }
+      .text-indigo-400 { color: rgba(${r},${g},${b},0.7) !important; }
+      .text-indigo-500 { color: rgba(${r},${g},${b},0.85) !important; }
+      .text-indigo-600 { color: ${hex} !important; }
+      .text-indigo-700 { color: rgba(${r},${g},${b},0.85) !important; }
+      .hover\\:text-indigo-600:hover { color: ${hex} !important; }
+      .border-indigo-100 { border-color: rgba(${r},${g},${b},0.2) !important; }
+      .border-indigo-200 { border-color: rgba(${r},${g},${b},0.3) !important; }
+      .border-indigo-500 { border-color: ${hex} !important; }
+      .border-indigo-600 { border-color: ${hex} !important; }
+      .from-indigo-500, .from-indigo-600, .from-indigo-700 {
+        --tw-gradient-from: ${hex} !important;
+        --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to, rgba(${r},${g},${b},0)) !important;
+      }
+      .via-indigo-600 {
+        --tw-gradient-stops: ${hex}, ${hex}, var(--tw-gradient-to, rgba(${r},${g},${b},0)) !important;
+      }
+      .to-purple-600, .to-purple-700, .to-purple-800 {
+        --tw-gradient-to: rgba(${r},${g},${b},0.75) !important;
+      }
+      .hover\\:from-indigo-700:hover { --tw-gradient-from: rgba(${r},${g},${b},0.9) !important; }
+      .hover\\:to-purple-700:hover   { --tw-gradient-to: rgba(${r},${g},${b},0.75) !important; }
+      .focus\\:ring-indigo-500:focus { --tw-ring-color: rgba(${r},${g},${b},0.4) !important; }
+      .shadow-indigo-200 { --tw-shadow-color: rgba(${r},${g},${b},0.25) !important; --tw-shadow: var(--tw-shadow-colored) !important; }
+      .dark .dark\\:text-indigo-400 { color: rgba(${r},${g},${b},0.7) !important; }
+      .dark .dark\\:from-indigo-400 { --tw-gradient-from: rgba(${r},${g},${b},0.7) !important; }
+      .dark .dark\\:to-purple-400   { --tw-gradient-to: rgba(${r},${g},${b},0.6) !important; }
+    `;
+  }, [hex]);
+
+  return null;
 }
+
 
 function App() {
   const { loadAll, loadSettingsOnly, isLoading, dbError } = useStore();
