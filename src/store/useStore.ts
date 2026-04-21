@@ -261,7 +261,7 @@ export const useStore = create<CashierStore>((set, get) => ({
       }
     }
 
-    const savedPaidAmount = Math.min(total, paidAmount);
+    const savedPaidAmount = type === 'payment' ? paidAmount : Math.min(total, paidAmount);
 
     // Insert order
     const { error: orderError } = await supabase.from('orders').insert({ 

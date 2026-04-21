@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 // Updated finances logic to account for returns in debt calculation
 import { useStore } from '../../store/useStore';
-import { ArrowRightLeft, Search, User, Printer } from 'lucide-react';
+import { ArrowRightLeft, Search, User, Printer, CreditCard } from 'lucide-react';
 
 export default function Invoices() {
   const { orders, storeSettings } = useStore();
@@ -12,16 +12,25 @@ export default function Invoices() {
 
   const handlePrint = (order: any) => {
     const printDate = new Date(order.date).toLocaleString('ar-SA');
+    const isPayment = order.type === 'payment';
     const subtotal = order.items.reduce((sum: number, item: any) => sum + (item.sale_price * item.quantity), 0);
     const taxValue = order.total - subtotal;
     
-    const itemsHtml = order.items.map((item: any) =>
-      `<tr>
-        <td style="padding:6px 4px;border-bottom:1px dashed #ddd;font-size:13px;">${item.name}${item.returned_quantity > 0 ? ` <span style="color:red;font-size:10px;">(مرتجع: ${item.returned_quantity})</span>` : ''}</td>
-        <td style="padding:6px 4px;border-bottom:1px dashed #ddd;text-align:center;font-size:13px;">${item.quantity}</td>
-        <td style="padding:6px 4px;border-bottom:1px dashed #ddd;text-align:left;font-size:13px;">${(item.sale_price * item.quantity).toFixed(2)}</td>
-      </tr>`
-    ).join('');
+    let itemsHtml = '';
+    if (isPayment) {
+      itemsHtml = `<tr>
+        <td colspan="2" style="padding:12px 4px;border-bottom:1px dashed #ddd;font-size:14px;font-weight:bold;">سداد مديونية سابقة</td>
+        <td style="padding:12px 4px;border-bottom:1px dashed #ddd;text-align:left;font-size:14px;font-weight:bold;">${order.paid_amount.toFixed(2)}</td>
+      </tr>`;
+    } else {
+      itemsHtml = order.items.map((item: any) =>
+        `<tr>
+          <td style="padding:6px 4px;border-bottom:1px dashed #ddd;font-size:13px;">${item.name}${item.returned_quantity > 0 ? ` <span style="color:red;font-size:10px;">(مرتجع: ${item.returned_quantity})</span>` : ''}</td>
+          <td style="padding:6px 4px;border-bottom:1px dashed #ddd;text-align:center;font-size:13px;">${item.quantity}</td>
+          <td style="padding:6px 4px;border-bottom:1px dashed #ddd;text-align:left;font-size:13px;">${(item.sale_price * item.quantity).toFixed(2)}</td>
+        </tr>`
+      ).join('');
+    }
 
     const customerBlock = order.customer
       ? `<div class="customer-box"><strong>العميل:</strong> ${order.customer.name} &nbsp;|&nbsp; <strong>هاتف:</strong> <span dir="ltr">${order.customer.phone}</span></div>`
@@ -31,7 +40,7 @@ export default function Invoices() {
 <html dir="rtl" lang="ar">
 <head>
   <meta charset="UTF-8"/>
-  <title>فاتورة #${order.id}</title>
+  <title>${isPayment ? 'وصل سداد' : 'فاتورة'} #${order.id}</title>
   <style>
     *{margin:0;padding:0;box-sizing:border-box;}
     body{font-family:'Segoe UI',Arial,sans-serif;background:#fff;color:#111;width:320px;margin:0 auto;padding:16px;}
@@ -62,28 +71,36 @@ export default function Invoices() {
     </div>
   </div>
   <div class="invoice-meta">
-    <span>رقم الفاتورة: <strong>${order.id}</strong></span>
+    <span>${isPayment ? 'رقم الإيصال' : 'رقم الفاتورة'}: <strong>${order.id}</strong></span>
     <span>${printDate}</span>
   </div>
   ${customerBlock}
+  ${isPayment ? `<h3 style="text-align:center;margin:10px 0;font-size:16px;color:#444;">إيصال سداد نقدي</h3>` : ''}
   <table>
     <thead><tr>
-      <th>المنتج</th>
-      <th style="text-align:center">كمية</th>
+      <th>${isPayment ? 'البيان' : 'المنتج'}</th>
+      <th style="text-align:center">${isPayment ? '' : 'كمية'}</th>
       <th style="text-align:left">إجمالي</th>
     </tr></thead>
     <tbody>${itemsHtml}</tbody>
   </table>
   <div class="totals">
-    <div class="total-row"><span>المجموع الفرعي:</span><span>${subtotal.toFixed(2)} ${storeSettings.currency}</span></div>
-    <div class="total-row"><span>الضريبة (${storeSettings.taxRate}%):</span><span>${taxValue.toFixed(2)} ${storeSettings.currency}</span></div>
-    <div class="total-row grand-total"><span>الإجمالي:</span><span>${order.total.toFixed(2)} ${storeSettings.currency}</span></div>
-    ${order.items.some((i:any) => i.returned_quantity > 0) ? `
-      <div class="total-row" style="color:red;font-weight:bold;">
-        <span>إجمالي المرتجع:</span>
-        <span>-${order.items.reduce((sum:number, i:any) => sum + (i.returned_quantity * i.sale_price), 0).toFixed(2)} ${storeSettings.currency}</span>
+    ${isPayment ? `
+      <div class="total-row grand-total">
+        <span>إجمالي المبلغ المسدد:</span>
+        <span>${order.paid_amount.toFixed(2)} ${storeSettings.currency}</span>
       </div>
-    ` : ''}
+    ` : `
+      <div class="total-row"><span>المجموع الفرعي:</span><span>${subtotal.toFixed(2)} ${storeSettings.currency}</span></div>
+      <div class="total-row"><span>الضريبة (${storeSettings.taxRate}%):</span><span>${taxValue.toFixed(2)} ${storeSettings.currency}</span></div>
+      <div class="total-row grand-total"><span>الإجمالي:</span><span>${order.total.toFixed(2)} ${storeSettings.currency}</span></div>
+      ${order.items.some((i:any) => i.returned_quantity > 0) ? `
+        <div class="total-row" style="color:red;font-weight:bold;">
+          <span>إجمالي المرتجع:</span>
+          <span>-${order.items.reduce((sum:number, i:any) => sum + (i.returned_quantity * i.sale_price), 0).toFixed(2)} ${storeSettings.currency}</span>
+        </div>
+      ` : ''}
+    `}
   </div>
   <div class="footer">شكراً لتعاملكم ♥</div>
   <script>window.onload=()=>{window.print();window.onafterprint=()=>window.close();}<\/script>
@@ -227,18 +244,24 @@ export default function Invoices() {
                         )}
                       </td>
                       <td className="p-4 text-slate-500">{new Date(order.date).toLocaleString('ar-SA')}</td>
-                      <td className="p-4">
-                        <ul className="space-y-1">
-                          {order.items.map(i => (
-                            <li key={i.id} className={`flex items-center gap-2 ${i.returned_quantity > 0 ? 'text-red-500' : ''}`}>
-                              • {i.name} <span className="text-xs text-slate-400">(الكمية: {i.quantity})</span> 
-                              {i.returned_quantity > 0 && <span className="font-bold text-[10px] bg-red-100 px-1.5 py-0.5 rounded text-red-600">مرتجع: {i.returned_quantity}</span>}
-                            </li>
-                          ))}
-                        </ul>
+                      <td className="p-4 text-right">
+                        {order.type === 'payment' ? (
+                          <div className="flex items-center gap-2 text-indigo-600 font-bold">
+                            <CreditCard size={14} /> سداد مديونية آجل
+                          </div>
+                        ) : (
+                          <ul className="space-y-1">
+                            {order.items.map(i => (
+                              <li key={i.id} className={`flex items-center gap-2 ${i.returned_quantity > 0 ? 'text-red-500' : ''}`}>
+                                • {i.name} <span className="text-xs text-slate-400">(الكمية: {i.quantity})</span> 
+                                {i.returned_quantity > 0 && <span className="font-bold text-[10px] bg-red-100 px-1.5 py-0.5 rounded text-red-600">مرتجع: {i.returned_quantity}</span>}
+                              </li>
+                            ))}
+                          </ul>
+                        )}
                       </td>
-                      <td className="p-4 text-center font-black border-x border-slate-100 bg-slate-50/50">
-                        {order.total.toFixed(2)} {storeSettings.currency}
+                       <td className="p-4 text-center font-black border-x border-slate-100 bg-slate-50/50" style={order.type === 'payment' ? { color: storeSettings.themeColor } : {}}>
+                        {order.type === 'payment' ? `+ ${order.paid_amount.toFixed(2)}` : order.total.toFixed(2)} {storeSettings.currency}
                       </td>
                       <td className="p-4 text-center font-bold text-orange-600">
                         {returnedValue.toFixed(2)} {storeSettings.currency}
