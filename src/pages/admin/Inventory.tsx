@@ -8,8 +8,8 @@ export default function Inventory() {
   const [newCategoryName, setNewCategoryName] = useState('');
   const [showCatForm, setShowCatForm] = useState(false);
   
-  // Modal State
   const [showAddModal, setShowAddModal] = useState(false);
+  const [editingProductId, setEditingProductId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     barcode: '',
@@ -71,6 +71,32 @@ export default function Inventory() {
     }
   };
 
+  const openEditModal = (product: Product) => {
+    setEditingProductId(product.id);
+    setFormData({
+      name: product.name,
+      barcode: product.barcode || '',
+      purchase_price: product.purchase_price,
+      sale_price: product.sale_price,
+      stock_quantity: product.stock_quantity,
+      category_id: product.category_id
+    });
+    setShowAddModal(true);
+  };
+
+  const openAddModal = () => {
+    setEditingProductId(null);
+    setFormData({
+      name: '',
+      barcode: '',
+      purchase_price: 0,
+      sale_price: 0,
+      stock_quantity: 0,
+      category_id: categories[0]?.id || ''
+    });
+    setShowAddModal(true);
+  };
+
   const submitProduct = (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.name || !formData.barcode) {
@@ -78,9 +104,14 @@ export default function Inventory() {
       return;
     }
     
-    addProduct({ ...formData });
+    if (editingProductId) {
+      updateProduct(editingProductId, { ...formData });
+    } else {
+      addProduct({ ...formData });
+    }
     
     setShowAddModal(false);
+    setEditingProductId(null);
     setFormData({
       name: '',
       barcode: '',
@@ -99,8 +130,8 @@ export default function Inventory() {
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl shadow-2xl w-full max-w-xl overflow-hidden border border-slate-200">
             <div className="p-6 border-b flex justify-between items-center bg-slate-50">
-              <h2 className="text-xl font-bold text-slate-800">إضافة منتج جديد</h2>
-              <button onClick={() => setShowAddModal(false)} className="text-slate-400 hover:text-slate-600 bg-white p-2 rounded-xl shadow-sm border border-slate-200">
+              <h2 className="text-xl font-bold text-slate-800">{editingProductId ? 'تعديل بيانات المنتج' : 'إضافة منتج جديد'}</h2>
+              <button onClick={() => { setShowAddModal(false); setEditingProductId(null); }} className="text-slate-400 hover:text-slate-600 bg-white p-2 rounded-xl shadow-sm border border-slate-200">
                 <X size={20} />
               </button>
             </div>
@@ -138,7 +169,7 @@ export default function Inventory() {
               <div className="pt-4 mt-2 border-t">
                 <button type="submit" style={{ backgroundColor: storeSettings.themeColor }} className="w-full text-white py-4 rounded-xl font-bold transition shadow-lg shrink-0 flex items-center justify-center gap-2">
                   <Plus size={20} />
-                  حفظ المنتج في قاعدة البيانات
+                  {editingProductId ? 'تحديث بيانات المنتج' : 'حفظ المنتج في قاعدة البيانات'}
                 </button>
               </div>
             </form>
@@ -209,7 +240,7 @@ export default function Inventory() {
         <div>
           <h2 className="text-xl font-black text-slate-800">المنتجات</h2>
         </div>
-        <button onClick={() => setShowAddModal(true)} style={{ backgroundColor: storeSettings.themeColor }} className="text-white px-6 py-3 rounded-xl font-bold transition flex items-center gap-2 shadow-lg">
+        <button onClick={openAddModal} style={{ backgroundColor: storeSettings.themeColor }} className="text-white px-6 py-3 rounded-xl font-bold transition flex items-center gap-2 shadow-lg">
           <Plus size={20} />
           إضافة منتج
         </button>
@@ -278,7 +309,10 @@ export default function Inventory() {
 
                     <td className="p-4">
                       <div className="flex items-center justify-center gap-2">
-                        <button onClick={() => handleDelete(product.id, product.name)} className="p-2 text-red-400 hover:bg-red-50 hover:text-red-600 rounded-lg transition">
+                        <button onClick={() => openEditModal(product)} className="p-2 text-indigo-400 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg transition" title="تعديل المنتج">
+                          <Edit2 size={18} />
+                        </button>
+                        <button onClick={() => handleDelete(product.id, product.name)} className="p-2 text-red-400 hover:bg-red-50 hover:text-red-600 rounded-lg transition" title="حذف المنتج">
                           <Trash2 size={18} />
                         </button>
                       </div>
