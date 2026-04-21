@@ -11,6 +11,21 @@ export default function Settings() {
     alert('تم حفظ الإعدادات بنجاح!');
   };
 
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 2 * 1024 * 1024) {
+        alert('حجم الصورة كبير جداً، يرجى اختيار صورة أقل من 2 ميجابايت.');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setFormData({ ...formData, logo: reader.result as string });
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   return (
     <div className="p-8 max-w-3xl">
       <div className="mb-8">
@@ -35,15 +50,37 @@ export default function Settings() {
           </div>
           
           <div className="col-span-2">
-            <label className="block text-sm font-bold text-slate-700 mb-2">رابط الشعار (Logo URL)</label>
-            <input 
-              type="text" 
-              dir="ltr"
-              value={formData.logo}
-              onChange={(e) => setFormData({...formData, logo: e.target.value})}
-              className="w-full bg-slate-50 border border-slate-200 py-3 px-4 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none transition text-left"
-            />
-            <p className="text-xs text-slate-400 mt-2">انسخ رابط مسار أي صورة من الإنترنت لتعيينها كشعار النظام.</p>
+            <label className="block text-sm font-bold text-slate-700 mb-2">رابط أو صورة الشعار (Logo)</label>
+            <div className="flex items-center gap-3">
+              <input 
+                type="text" 
+                dir="ltr"
+                value={formData.logo.startsWith('data:image') ? 'صورة مرفوعة (جارِ العرض)' : formData.logo}
+                onChange={(e) => setFormData({...formData, logo: e.target.value})}
+                className="flex-1 bg-slate-50 border border-slate-200 py-3 px-4 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none transition text-left disabled:opacity-50"
+                disabled={formData.logo.startsWith('data:image')}
+                placeholder="https://..."
+              />
+              <label className="cursor-pointer bg-white border border-indigo-200 text-indigo-600 hover:bg-indigo-50 px-5 py-3 rounded-xl font-bold transition whitespace-nowrap flex items-center justify-center">
+                رفع صورة
+                <input 
+                  type="file" 
+                  accept="image/*"
+                  onChange={handleImageUpload}
+                  className="hidden"
+                />
+              </label>
+              {formData.logo.startsWith('data:image') && (
+                <button
+                  type="button"
+                  onClick={() => setFormData({...formData, logo: ''})}
+                  className="bg-red-50 text-red-600 px-4 py-3 rounded-xl hover:bg-red-100 font-bold transition"
+                >
+                  حذف
+                </button>
+              )}
+            </div>
+            <p className="text-xs text-slate-400 mt-2">يمكنك نسخ رابط صورة، أو رفع صورة مباشرة من جهازك (يفضل أن تكون مربعة وبحجم أقل من 2MB).</p>
           </div>
 
           <div>
