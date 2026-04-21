@@ -21,21 +21,10 @@ function ThemeInjector() {
   return (
     <style>
       {`
-        :root { --theme-color: ${hex}; --theme-rgb: ${r}, ${g}, ${b}; }
-        .text-indigo-600, .hover\\:text-indigo-600:hover, .text-indigo-500, .dark .dark\\:text-indigo-400 { color: var(--theme-color) !important; }
-        .bg-indigo-600, .bg-indigo-500 { background-color: var(--theme-color) !important; }
-        .bg-indigo-50 { background-color: rgba(var(--theme-rgb), 0.1) !important; }
-        .bg-indigo-600\\/5 { background-color: rgba(var(--theme-rgb), 0.05) !important; }
-        .from-indigo-600, .from-indigo-500, .from-indigo-700, .dark .dark\\:from-indigo-400 { --tw-gradient-from: var(--theme-color) var(--tw-gradient-from-position) !important; --tw-gradient-to: rgba(var(--theme-rgb), 0) var(--tw-gradient-to-position) !important; --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to) !important; }
-        .to-purple-600, .to-purple-700, .to-purple-800, .dark .dark\\:to-purple-400 { --tw-gradient-to: var(--theme-color) var(--tw-gradient-to-position) !important; }
-        .via-indigo-600 { --tw-gradient-via: var(--theme-color) var(--tw-gradient-via-position) !important; --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-via), var(--tw-gradient-to) !important; }
-        .border-indigo-200, .border-indigo-600, .border-indigo-100 { border-color: rgba(var(--theme-rgb), 0.3) !important; }
-        .border-indigo-500 { border-color: var(--theme-color) !important; }
-        .shadow-indigo-500\\/20, .shadow-indigo-900\\/20, .shadow-indigo-200 { --tw-shadow-color: rgba(var(--theme-rgb), 0.2) !important; --tw-shadow: var(--tw-shadow-colored) !important; }
-        .ring-indigo-500, .focus\\:ring-indigo-500:focus { --tw-ring-color: var(--theme-color) !important; }
-        .hover\\:bg-indigo-700:hover { background-color: rgba(var(--theme-rgb), 0.8) !important; }
-        .hover\\:to-purple-700:hover { --tw-gradient-to: rgba(var(--theme-rgb), 0.8) var(--tw-gradient-to-position) !important; }
-        .hover\\:from-indigo-700:hover { --tw-gradient-from: rgba(var(--theme-rgb), 0.9) var(--tw-gradient-from-position) !important; }
+        :root { 
+          --theme-color: ${hex}; 
+          --theme-rgb: ${r} ${g} ${b}; 
+        }
       `}
     </style>
   );
