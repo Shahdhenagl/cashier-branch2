@@ -18,6 +18,10 @@ export default function POS() {
   const [showReturnsModal, setShowReturnsModal] = useState(false);
   const [returnSearchQuery, setReturnSearchQuery] = useState('');
   const [activeReturnOrder, setActiveReturnOrder] = useState<any>(null);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [lastInvoiceId, setLastInvoiceId] = useState('');
+  const [lastCustomerInfo, setLastCustomerInfo] = useState<any>(null);
+  const [lastOrderDetails, setLastOrderDetails] = useState<any>(null);
 
   useEffect(() => {
     if (isDarkMode) {
@@ -56,6 +60,81 @@ export default function POS() {
     }
   };
 
+  const printInvoice = (invId: string, orderDetails: any) => {
+    const currentSettings = { ...storeSettings };
+    const printDate = new Date().toLocaleString('ar-SA');
+    const itemsHtml = orderDetails.cart.map((item: any) =>
+      `<tr>
+        <td style="padding:6px 4px;border-bottom:1px dashed #ddd;font-size:13px;">${item.name}</td>
+        <td style="padding:6px 4px;border-bottom:1px dashed #ddd;text-align:center;font-size:13px;">${item.quantity}</td>
+        <td style="padding:6px 4px;border-bottom:1px dashed #ddd;text-align:left;font-size:13px;">${(item.sale_price * item.quantity).toFixed(2)}</td>
+      </tr>`
+    ).join('');
+
+    const customerBlock = (orderDetails.customerName || orderDetails.customerPhone)
+      ? `<div class="customer-box"><strong>العميل:</strong> ${orderDetails.customerName || '—'} &nbsp;|&nbsp; <strong>هاتف:</strong> <span dir="ltr">${orderDetails.customerPhone || '—'}</span></div>`
+      : '';
+
+    const html = `<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+<meta charset="UTF-8"/>
+<title>فاتورة #${invId}</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{font-family:'Segoe UI',Arial,sans-serif;background:#fff;color:#111;width:320px;margin:0 auto;padding:16px;}
+  .header{text-align:center;border-bottom:2px dashed #333;padding-bottom:12px;margin-bottom:12px;}
+  .logo{width:64px;height:64px;object-fit:cover;border-radius:12px;margin-bottom:6px;}
+  .store-name{font-size:18px;font-weight:900;margin-bottom:4px;}
+  .store-info{font-size:11px;color:#555;line-height:1.7;}
+  .invoice-meta{display:flex;justify-content:space-between;font-size:11px;color:#555;margin:8px 0;background:#f5f5f5;padding:6px 8px;border-radius:6px;}
+  .customer-box{background:#f0f4ff;border-radius:6px;padding:6px 10px;font-size:12px;margin-bottom:8px;border-right:3px solid #6366f1;}
+  table{width:100%;border-collapse:collapse;}
+  thead th{font-size:12px;color:#888;padding:4px;border-bottom:2px solid #eee;text-align:right;}
+  thead th:last-child{text-align:left;}
+  .totals{margin-top:10px;border-top:2px dashed #333;padding-top:10px;}
+  .total-row{display:flex;justify-content:space-between;font-size:13px;padding:3px 0;}
+  .grand-total{font-size:17px;font-weight:900;border-top:1px solid #ddd;margin-top:6px;padding-top:8px;}
+  .footer{text-align:center;margin-top:16px;font-size:12px;color:#888;border-top:2px dashed #bbb;padding-top:10px;}
+  @media print{@page{margin:4mm;size:80mm auto;}}
+</style>
+</head>
+<body>
+<div class="header">
+  <img class="logo" src="${currentSettings.logo}" onerror="this.style.display='none'" />
+  <div class="store-name">${currentSettings.name}</div>
+  <div class="store-info">
+    ${currentSettings.address ? `${currentSettings.address}<br/>` : ''}
+    ${currentSettings.phone ? `هاتف: ${currentSettings.phone}` : ''}
+    ${currentSettings.phone2 ? ` | ${currentSettings.phone2}` : ''}
+  </div>
+</div>
+<div class="invoice-meta">
+  <span>رقم الفاتورة: <strong>${invId}</strong></span>
+  <span>${printDate}</span>
+</div>
+${customerBlock}
+<table>
+  <thead><tr>
+    <th>المنتج</th>
+    <th style="text-align:center">كمية</th>
+    <th style="text-align:left">إجمالي</th>
+  </tr></thead>
+  <tbody>${itemsHtml}</tbody>
+</table>
+<div class="totals">
+  <div class="total-row"><span>المجموع الفرعي:</span><span>${orderDetails.subtotal.toFixed(2)} ${currentSettings.currency}</span></div>
+  <div class="total-row"><span>الضريبة (${currentSettings.taxRate}%):</span><span>${orderDetails.tax.toFixed(2)} ${currentSettings.currency}</span></div>
+  <div class="total-row grand-total"><span>الإجمالي:</span><span>${orderDetails.total.toFixed(2)} ${currentSettings.currency}</span></div>
+</div>
+<div class="footer">شكراً لتعاملكم ♥</div>
+<script>window.onload=()=>{window.print();window.onafterprint=()=>window.close();}<\/script>
+</body></html>`;
+
+    const pw = window.open('', '_blank', 'width=400,height=750');
+    if (pw) { pw.document.write(html); pw.document.close(); }
+  };
+
   const doCheckout = async (shouldPrint: boolean) => {
     const currentCart = [...cart];
     const currentSubtotal = subtotal;
@@ -63,7 +142,6 @@ export default function POS() {
     const currentTotal = total;
     const currentCustomerName = customerName;
     const currentCustomerPhone = customerPhone;
-    const currentSettings = { ...storeSettings };
 
     const finalPaidAmount = paidAmountStr === '' ? currentTotal : parseFloat(paidAmountStr) || 0;
 
@@ -73,129 +151,29 @@ export default function POS() {
     }
 
     const invoiceId = await checkout(currentTotal, { name: currentCustomerName, phone: currentCustomerPhone }, finalPaidAmount, 'sale');
+    
+    const details = {
+      cart: currentCart,
+      subtotal: currentSubtotal,
+      tax: currentTax,
+      total: currentTotal,
+      customerName: currentCustomerName,
+      customerPhone: currentCustomerPhone
+    };
+
+    setLastInvoiceId(invoiceId);
+    setLastCustomerInfo({ name: currentCustomerName, phone: currentCustomerPhone });
+    setLastOrderDetails(details);
+    setShowSuccessModal(true);
+
+    if (shouldPrint) {
+      printInvoice(invoiceId, details);
+    }
+
     setCustomerName('');
     setCustomerPhone('');
     setPaidAmountStr('');
     setCustomerDebt(0);
-
-    const sendWhatsApp = (invId: string) => {
-      if (!currentCustomerPhone.trim()) return;
-      
-      let itemsText = currentCart.map(item => `• ${item.name} (عدد: ${item.quantity}) - ${(item.sale_price * item.quantity).toFixed(2)} ${currentSettings.currency}`).join('\n');
-      
-      const message = `*فاتورة جديدة من ${currentSettings.name}* 🧾\n\n` +
-        `*رقم الفاتورة:* #${invId}\n` +
-        `*التاريخ:* ${new Date().toLocaleString('ar-SA')}\n` +
-        `*الإجمالي:* ${currentTotal.toFixed(2)} ${currentSettings.currency}\n\n` +
-        `*تفاصيل الطلب:*\n${itemsText}\n\n` +
-        `${currentSettings.address ? `📍 *العنوان:* ${currentSettings.address}\n` : ''}` +
-        `${currentSettings.phone ? `📞 *للتواصل:* ${currentSettings.phone}\n` : ''}` +
-        `\n*شكراً لتعاملكم معنا، في انتظاركم مرة أخرى!* ❤️\n` +
-        `*ما رأيك في خدمتنا؟ نسعد بتلقي ملاحظاتك.*`;
-
-      // Clean phone number (remove non-digits, ensure country code)
-      let cleanPhone = currentCustomerPhone.replace(/\D/g, '');
-      if (cleanPhone.startsWith('01') && cleanPhone.length === 11) {
-        cleanPhone = '2' + cleanPhone; // Egypt country code
-      } else if (cleanPhone.length === 10 && !cleanPhone.startsWith('0')) {
-        // assume local without leading zero
-      }
-
-      const encodedMsg = encodeURIComponent(message);
-      const whatsappUrl = `https://wa.me/${cleanPhone}?text=${encodedMsg}`;
-      window.open(whatsappUrl, '_blank');
-    };
-
-    if (shouldPrint) {
-      const printDate = new Date().toLocaleString('ar-SA');
-      const itemsHtml = currentCart.map(item =>
-        `<tr>
-          <td style="padding:6px 4px;border-bottom:1px dashed #ddd;font-size:13px;">${item.name}</td>
-          <td style="padding:6px 4px;border-bottom:1px dashed #ddd;text-align:center;font-size:13px;">${item.quantity}</td>
-          <td style="padding:6px 4px;border-bottom:1px dashed #ddd;text-align:left;font-size:13px;">${(item.sale_price * item.quantity).toFixed(2)}</td>
-        </tr>`
-      ).join('');
-
-      const customerBlock = (currentCustomerName || currentCustomerPhone)
-        ? `<div class="customer-box"><strong>العميل:</strong> ${currentCustomerName || '—'} &nbsp;|&nbsp; <strong>هاتف:</strong> <span dir="ltr">${currentCustomerPhone || '—'}</span></div>`
-        : '';
-
-      const html = `<!DOCTYPE html>
-<html dir="rtl" lang="ar">
-<head>
-  <meta charset="UTF-8"/>
-  <title>فاتورة #${invoiceId}</title>
-  <style>
-    *{margin:0;padding:0;box-sizing:border-box;}
-    body{font-family:'Segoe UI',Arial,sans-serif;background:#fff;color:#111;width:320px;margin:0 auto;padding:16px;}
-    .header{text-align:center;border-bottom:2px dashed #333;padding-bottom:12px;margin-bottom:12px;}
-    .logo{width:64px;height:64px;object-fit:cover;border-radius:12px;margin-bottom:6px;}
-    .store-name{font-size:18px;font-weight:900;margin-bottom:4px;}
-    .store-info{font-size:11px;color:#555;line-height:1.7;}
-    .invoice-meta{display:flex;justify-content:space-between;font-size:11px;color:#555;margin:8px 0;background:#f5f5f5;padding:6px 8px;border-radius:6px;}
-    .customer-box{background:#f0f4ff;border-radius:6px;padding:6px 10px;font-size:12px;margin-bottom:8px;border-right:3px solid #6366f1;}
-    table{width:100%;border-collapse:collapse;}
-    thead th{font-size:12px;color:#888;padding:4px;border-bottom:2px solid #eee;text-align:right;}
-    thead th:last-child{text-align:left;}
-    .totals{margin-top:10px;border-top:2px dashed #333;padding-top:10px;}
-    .total-row{display:flex;justify-content:space-between;font-size:13px;padding:3px 0;}
-    .grand-total{font-size:17px;font-weight:900;border-top:1px solid #ddd;margin-top:6px;padding-top:8px;}
-    .footer{text-align:center;margin-top:16px;font-size:12px;color:#888;border-top:2px dashed #bbb;padding-top:10px;}
-    @media print{@page{margin:4mm;size:80mm auto;}}
-  </style>
-</head>
-<body>
-  <div class="header">
-    <img class="logo" src="${currentSettings.logo}" onerror="this.style.display='none'" />
-    <div class="store-name">${currentSettings.name}</div>
-    <div class="store-info">
-      ${currentSettings.address ? `${currentSettings.address}<br/>` : ''}
-      ${currentSettings.phone ? `هاتف: ${currentSettings.phone}` : ''}
-      ${currentSettings.phone2 ? ` | ${currentSettings.phone2}` : ''}
-    </div>
-  </div>
-  <div class="invoice-meta">
-    <span>رقم الفاتورة: <strong>${invoiceId}</strong></span>
-    <span>${printDate}</span>
-  </div>
-  ${customerBlock}
-  <table>
-    <thead><tr>
-      <th>المنتج</th>
-      <th style="text-align:center">كمية</th>
-      <th style="text-align:left">إجمالي</th>
-    </tr></thead>
-    <tbody>${itemsHtml}</tbody>
-  </table>
-  <div class="totals">
-    <div class="total-row"><span>المجموع الفرعي:</span><span>${currentSubtotal.toFixed(2)} ${currentSettings.currency}</span></div>
-    <div class="total-row"><span>الضريبة (${currentSettings.taxRate}%):</span><span>${currentTax.toFixed(2)} ${currentSettings.currency}</span></div>
-    <div class="total-row grand-total"><span>الإجمالي:</span><span>${currentTotal.toFixed(2)} ${currentSettings.currency}</span></div>
-  </div>
-  <div class="footer">شكراً لتعاملكم ♥</div>
-  <script>window.onload=()=>{window.print();window.onafterprint=()=>window.close();}<\/script>
-</body></html>`;
-
-      const pw = window.open('', '_blank', 'width=400,height=750');
-      if (pw) { pw.document.write(html); pw.document.close(); }
-      
-      // WhatsApp sending with confirmation to avoid popup blockers
-      if (currentCustomerPhone.trim()) {
-        setTimeout(() => {
-          if (confirm(`تم حفظ الفاتورة بنجاح رقم #${invoiceId}\n\nهل تريد إرسال نسخة للعميل عبر واتساب؟`)) {
-            sendWhatsApp(invoiceId);
-          }
-        }, 500);
-      }
-    } else {
-      if (currentCustomerPhone.trim()) {
-        if (confirm(`تم الدفع بنجاح رقم الفاتورة: ${invoiceId}\n\nهل تريد إرسالها للعميل عبر واتساب؟`)) {
-          sendWhatsApp(invoiceId);
-        }
-      } else {
-        alert(`تم الدفع بنجاح!\nرقم الفاتورة: ${invoiceId}`);
-      }
-    }
   };
 
   const filteredProducts = products.filter(
@@ -231,6 +209,69 @@ export default function POS() {
 
   return (
     <div className="flex h-screen bg-gray-50 dark:bg-slate-900 transition-colors duration-300 overflow-hidden font-sans text-gray-900 dark:text-gray-100">
+      
+      {/* SUCCESS MODAL */}
+      {showSuccessModal && (
+        <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-800 rounded-[40px] shadow-2xl w-full max-w-md overflow-hidden border border-gray-200 dark:border-slate-700 animate-in zoom-in-95 duration-200">
+            <div className="p-8 text-center">
+              <div className="w-20 h-20 bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 rounded-full flex items-center justify-center mx-auto mb-6 shadow-sm">
+                <Banknote size={40} />
+              </div>
+              <h2 className="text-3xl font-black text-gray-900 dark:text-white mb-2">تم الدفع بنجاح!</h2>
+              <p className="text-slate-500 dark:text-slate-400 font-bold mb-6 font-mono text-lg">رقم الفاتورة: #{lastInvoiceId}</p>
+              
+              <div className="space-y-3">
+                {lastCustomerInfo?.phone && (
+                  <button 
+                    onClick={() => {
+                       const sendWhatsApp = (invId: string, customerPhone: string, orderDetails: any) => {
+                          if (!customerPhone.trim()) return;
+                          let itemsText = orderDetails.cart.map((item: any) => `• ${item.name} (عدد: ${item.quantity}) - ${(item.sale_price * item.quantity).toFixed(2)} ${storeSettings.currency}`).join('\n');
+                          const message = `*فاتورة جديدة من ${storeSettings.name}* 🧾\n\n` +
+                            `*رقم الفاتورة:* #${invId}\n` +
+                            `*التاريخ:* ${new Date().toLocaleString('ar-SA')}\n` +
+                            `*الإجمالي:* ${orderDetails.total.toFixed(2)} ${storeSettings.currency}\n\n` +
+                            `*تفاصيل الطلب:*\n${itemsText}\n\n` +
+                            `${storeSettings.address ? `📍 *العنوان:* ${storeSettings.address}\n` : ''}` +
+                            `${storeSettings.phone ? `📞 *للتواصل:* ${storeSettings.phone}\n` : ''}` +
+                            `\n*شكراً لتعاملكم معنا، في انتظاركم مرة أخرى!* ❤️\n` +
+                            `*ما رأيك في خدمتنا؟ نسعد بتلقي ملاحظاتك.*`;
+                          let cleanPhone = customerPhone.replace(/\D/g, '');
+                          if (cleanPhone.startsWith('01') && cleanPhone.length === 11) cleanPhone = '2' + cleanPhone;
+                          const encodedMsg = encodeURIComponent(message);
+                          window.open(`https://wa.me/${cleanPhone}?text=${encodedMsg}`, '_blank');
+                        };
+                        sendWhatsApp(lastInvoiceId, lastCustomerInfo.phone, lastOrderDetails);
+                    }}
+                    className="w-full bg-[#25D366] hover:bg-[#128C7E] text-white py-4 rounded-2xl font-black flex items-center justify-center gap-3 transition-all shadow-lg scale-105"
+                  >
+                    <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+                    إرسال للفاتورة لواتساب
+                  </button>
+                )}
+                <div className="grid grid-cols-2 gap-3">
+                  <button 
+                    onClick={() => printInvoice(lastInvoiceId, lastOrderDetails)}
+                    className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 py-3.5 rounded-2xl font-bold flex items-center justify-center gap-2 transition-all border border-slate-200"
+                  >
+                    <Printer size={20} /> إعادة طباعة
+                  </button>
+                  <button 
+                    onClick={() => {
+                      setShowSuccessModal(false);
+                      clearCart();
+                    }}
+                    className="flex-1 bg-slate-900 hover:bg-black text-white py-3.5 rounded-2xl font-bold transition-all"
+                  >
+                    إغلاق
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       
       {showReturnsModal && (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
