@@ -5,10 +5,15 @@ export default function Settings() {
   const { storeSettings, updateSettings } = useStore();
   const [formData, setFormData] = useState(storeSettings);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    updateSettings(formData);
-    alert('تم حفظ الإعدادات بنجاح!');
+    try {
+      await updateSettings(formData);
+      alert('تم حفظ الإعدادات بنجاح!');
+    } catch (error) {
+      console.error(error);
+      alert('حدث خطأ أثناء حفظ الإعدادات. تأكد من اتصال الإنترنت أو صلاحيات قاعدة البيانات.');
+    }
   };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {

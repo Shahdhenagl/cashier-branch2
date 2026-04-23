@@ -193,6 +193,14 @@ export const useStore = create<CashierStore>((set, get) => ({
         activeInvoiceId: counter.toString(),
         isLoading: false,
       });
+
+      // Sync settings across tabs
+      const bc = new BroadcastChannel('cashier-sync');
+      bc.onmessage = (msg) => {
+        if (msg.data === 'sync_settings') {
+          get().loadSettingsOnly();
+        }
+      };
     } catch (err) {
       set({ isLoading: false, dbError: String(err) });
     }
