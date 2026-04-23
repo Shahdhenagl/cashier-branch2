@@ -78,6 +78,34 @@ export default function POS() {
     setPaidAmountStr('');
     setCustomerDebt(0);
 
+    const sendWhatsApp = (invId: string) => {
+      if (!currentCustomerPhone.trim()) return;
+      
+      let itemsText = currentCart.map(item => `• ${item.name} (عدد: ${item.quantity}) - ${(item.sale_price * item.quantity).toFixed(2)} ${currentSettings.currency}`).join('\n');
+      
+      const message = `*فاتورة جديدة من ${currentSettings.name}* 🧾\n\n` +
+        `*رقم الفاتورة:* #${invId}\n` +
+        `*التاريخ:* ${new Date().toLocaleString('ar-SA')}\n` +
+        `*الإجمالي:* ${currentTotal.toFixed(2)} ${currentSettings.currency}\n\n` +
+        `*تفاصيل الطلب:*\n${itemsText}\n\n` +
+        `${currentSettings.address ? `📍 *العنوان:* ${currentSettings.address}\n` : ''}` +
+        `${currentSettings.phone ? `📞 *للتواصل:* ${currentSettings.phone}\n` : ''}` +
+        `\n*شكراً لتعاملكم معنا، في انتظاركم مرة أخرى!* ❤️\n` +
+        `*ما رأيك في خدمتنا؟ نسعد بتلقي ملاحظاتك.*`;
+
+      // Clean phone number (remove non-digits, ensure country code)
+      let cleanPhone = currentCustomerPhone.replace(/\D/g, '');
+      if (cleanPhone.startsWith('01') && cleanPhone.length === 11) {
+        cleanPhone = '2' + cleanPhone; // Egypt country code
+      } else if (cleanPhone.length === 10 && !cleanPhone.startsWith('0')) {
+        // assume local without leading zero
+      }
+
+      const encodedMsg = encodeURIComponent(message);
+      const whatsappUrl = `https://wa.me/${cleanPhone}?text=${encodedMsg}`;
+      window.open(whatsappUrl, '_blank');
+    };
+
     if (shouldPrint) {
       const printDate = new Date().toLocaleString('ar-SA');
       const itemsHtml = currentCart.map(item =>
@@ -150,8 +178,16 @@ export default function POS() {
 
       const pw = window.open('', '_blank', 'width=400,height=750');
       if (pw) { pw.document.write(html); pw.document.close(); }
+      
+      // WhatsApp sending
+      if (currentCustomerPhone.trim()) {
+        sendWhatsApp(invoiceId);
+      }
     } else {
       alert(`تم الدفع بنجاح!\nرقم الفاتورة: ${invoiceId}`);
+      if (currentCustomerPhone.trim()) {
+        sendWhatsApp(invoiceId);
+      }
     }
   };
 
