@@ -238,7 +238,16 @@ ${customerBlock}
                             `\n*شكراً لتعاملكم معنا، في انتظاركم مرة أخرى!* ❤️\n` +
                             `*ما رأيك في خدمتنا؟ نسعد بتلقي ملاحظاتك.*`;
                           let cleanPhone = customerPhone.replace(/\D/g, '');
-                          if (cleanPhone.startsWith('01') && cleanPhone.length === 11) cleanPhone = '2' + cleanPhone;
+                          const code = storeSettings.whatsappCountryCode || '2';
+                          
+                          // Generic cleaning: if it starts with 0, remove and add code. 
+                          // If it doesn't have the code yet, add it.
+                          if (cleanPhone.startsWith('0')) {
+                            cleanPhone = code + cleanPhone.substring(1);
+                          } else if (!cleanPhone.startsWith(code)) {
+                            cleanPhone = code + cleanPhone;
+                          }
+
                           const encodedMsg = encodeURIComponent(message);
                           window.open(`https://wa.me/${cleanPhone}?text=${encodedMsg}`, '_blank');
                         };

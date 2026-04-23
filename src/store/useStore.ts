@@ -48,6 +48,7 @@ export interface StoreSettings {
   address: string;
   phone: string;
   phone2: string;
+  whatsappCountryCode: string;
 }
 
 // ─── Store Interface ──────────────────────────────────────────
@@ -96,6 +97,7 @@ function mapSettings(row: Record<string, unknown>): StoreSettings {
     address: (row.address as string) ?? '',
     phone: (row.phone as string) ?? '',
     phone2: (row.phone2 as string) ?? '',
+    whatsappCountryCode: (row.whatsapp_country_code as string) ?? '2',
   };
 }
 
@@ -110,6 +112,7 @@ export const useStore = create<CashierStore>((set, get) => ({
     address: '',
     phone: '',
     phone2: '',
+    whatsappCountryCode: '2',
   },
   products: [],
   categories: [],
@@ -449,6 +452,7 @@ export const useStore = create<CashierStore>((set, get) => ({
     if (newSettings.address !== undefined) mapped.address = newSettings.address;
     if (newSettings.phone !== undefined) mapped.phone = newSettings.phone;
     if (newSettings.phone2 !== undefined) mapped.phone2 = newSettings.phone2;
+    if (newSettings.whatsappCountryCode !== undefined) mapped.whatsapp_country_code = newSettings.whatsappCountryCode;
 
     await supabase.from('store_settings').update(mapped).eq('id', (await supabase.from('store_settings').select('id').limit(1).maybeSingle()).data?.id);
     set((state) => ({ storeSettings: { ...state.storeSettings, ...newSettings } }));
