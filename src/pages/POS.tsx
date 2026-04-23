@@ -179,9 +179,9 @@ export default function POS() {
       const pw = window.open('', '_blank', 'width=400,height=750');
       if (pw) { pw.document.write(html); pw.document.close(); }
       
-      // WhatsApp sending
+      // WhatsApp sending with a small delay to avoid popup blockers
       if (currentCustomerPhone.trim()) {
-        sendWhatsApp(invoiceId);
+        setTimeout(() => sendWhatsApp(invoiceId), 1000);
       }
     } else {
       alert(`تم الدفع بنجاح!\nرقم الفاتورة: ${invoiceId}`);
