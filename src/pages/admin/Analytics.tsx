@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { 
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, LabelList
 } from 'recharts';
 import { 
   TrendingUp, TrendingDown, DollarSign, Package, Users, 
@@ -10,6 +10,7 @@ import { useStore } from '../../store/useStore';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
+import html2canvas from 'html2canvas';
 
 // Fix for jspdf-autotable typing
 declare module 'jspdf' {
@@ -142,42 +143,31 @@ export default function Analytics() {
     XLSX.writeFile(wb, `analytics_report_${new Date().toLocaleDateString()}.xlsx`);
   };
 
-  const exportPDF = () => {
+  const exportPDF = async () => {
+    const element = document.getElementById('analytics-dashboard');
+    if (!element) return;
+
+    setLoading(true);
     try {
-      const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
+      const canvas = await html2canvas(element, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#f8fafc' // slate-50
+      });
       
-      doc.text('Sales Analytics Report', 105, 20, { align: 'center' });
-      doc.text(`Date: ${new Date().toLocaleDateString()}`, 20, 30);
-      doc.text(`Period: ${timeRange}`, 20, 40);
-
-      doc.autoTable({
-        startY: 50,
-        head: [['Metric', 'Value']],
-        body: [
-          ['Total Revenue', `${stats.revenue.toLocaleString()} ${storeSettings.currency}`],
-          ['Total Cost', `${stats.cost.toLocaleString()} ${storeSettings.currency}`],
-          ['Gross Profit', `${stats.profit.toLocaleString()} ${storeSettings.currency}`],
-          ['Profit Margin', `${stats.margin.toFixed(2)}%`],
-          ['Total Orders', stats.orderCount.toString()],
-        ],
-        theme: 'striped',
-        headStyles: { fillStyle: 'f', fillColor: [79, 70, 229] },
-      });
-
-      const finalY = (doc as any).lastAutoTable.finalY || 100;
-
-      doc.text('Top 10 Selling Products', 20, finalY + 15);
-      doc.autoTable({
-        startY: finalY + 20,
-        head: [['Product', 'Qty', 'Revenue', 'Profit']],
-        body: stats.topProductsByQty.map(p => [p.name || 'Unknown', p.qty, p.revenue.toLocaleString(), p.profit.toLocaleString()]),
-        headStyles: { fillStyle: 'f', fillColor: [79, 70, 229] },
-      });
-
-      doc.save(`analytics_report_${new Date().toLocaleDateString()}.pdf`);
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+      
+      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+      pdf.save(`analytics_report_${new Date().toLocaleDateString()}.pdf`);
     } catch (err) {
       console.error("PDF Export Error:", err);
       alert("حدث خطأ أثناء تصدير PDF. يرجى المحاولة مرة أخرى.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -191,7 +181,7 @@ export default function Analytics() {
   }
 
   return (
-    <div className="p-4 sm:p-8 max-w-7xl mx-auto space-y-8 animate-in fade-in duration-500" dir="rtl">
+    <div id="analytics-dashboard" className="p-4 sm:p-8 max-w-7xl mx-auto space-y-8 animate-in fade-in duration-500" dir="rtl">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
@@ -294,16 +284,19 @@ export default function Analytics() {
                 <YAxis 
                   dataKey="name" 
                   type="category" 
-                  axisLine={false} 
-                  tickLine={false} 
-                  width={150}
-                  style={{ fontSize: '14px', fontWeight: 'bold', fill: '#1e293b' }}
+                  hide
                 />
                 <Tooltip 
                   cursor={{ fill: '#f8fafc' }}
                   contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
                 />
-                <Bar dataKey="qty" radius={[0, 8, 8, 0]} barSize={24}>
+                <Bar dataKey="qty" radius={[0, 8, 8, 0]} barSize={32}>
+                  <LabelList 
+                    dataKey="name" 
+                    position="right" 
+                    offset={10} 
+                    style={{ fill: '#475569', fontWeight: '900', fontSize: '14px' }} 
+                  />
                   {stats.topProductsByQty.map((_, index) => (
                     <Cell key={`cell-${index}`} fill={index < 3 ? storeSettings.themeColor : '#94a3b8'} />
                   ))}
@@ -332,16 +325,19 @@ export default function Analytics() {
                 <YAxis 
                   dataKey="name" 
                   type="category" 
-                  axisLine={false} 
-                  tickLine={false} 
-                  width={150}
-                  style={{ fontSize: '14px', fontWeight: 'bold', fill: '#1e293b' }}
+                  hide
                 />
                 <Tooltip 
                   cursor={{ fill: '#f8fafc' }}
                   contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
                 />
-                <Bar dataKey="profit" radius={[0, 8, 8, 0]} barSize={24}>
+                <Bar dataKey="profit" radius={[0, 8, 8, 0]} barSize={32}>
+                  <LabelList 
+                    dataKey="name" 
+                    position="right" 
+                    offset={10} 
+                    style={{ fill: '#475569', fontWeight: '900', fontSize: '14px' }} 
+                  />
                   {stats.topProductsByProfit.map((_, index) => (
                     <Cell key={`cell-${index}`} fill={index < 3 ? '#10b981' : '#cbd5e1'} />
                   ))}
