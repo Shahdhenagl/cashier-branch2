@@ -13,18 +13,38 @@ export default function Customers() {
     c.name.includes(searchQuery) || c.phone.includes(searchQuery)
   );
 
+  const getCustomerMetrics = (customerId: string) => {
+    const customerOrders = orders.filter(o => o.customer?.id === customerId);
+    const invoiceIds = customerOrders.map(o => o.id);
+    const totalSpent = customerOrders.reduce((sum, o) => sum + o.total, 0);
+    const totalProfit = customerOrders.reduce((sum, o) => {
+      return sum + o.items.reduce((itemSum, item) => {
+        const netQty = item.quantity - item.returned_quantity;
+        return itemSum + (item.sale_price - item.purchase_price) * netQty;
+      }, 0);
+    }, 0);
+
+    return { customerOrders, invoiceIds, totalSpent, totalProfit };
+  };
+
   const exportExcel = () => {
     const wsData = [
-      ['سجل العملاء', '', '', ''],
-      ['التاريخ', new Date().toLocaleDateString(), '', ''],
+      ['سجل العملاء', '', '', '', '', '', ''],
+      ['التاريخ', new Date().toLocaleDateString(), '', '', '', '', ''],
       [''],
-      ['الاسم', 'رقم الهاتف', 'عدد الطلبات', 'تاريخ التسجيل'],
-      ...filteredCustomers.map(c => [
-        c.name,
-        c.phone,
-        orders.filter(o => o.customer?.id === c.id).length,
-        new Date(c.timestamp).toLocaleDateString('ar-SA')
-      ])
+      ['الاسم', 'رقم الهاتف', 'عدد الطلبات', 'أرقام الفواتير', 'إجمالي المبلغ', 'إجمالي الربح', 'تاريخ التسجيل'],
+      ...filteredCustomers.map(c => {
+        const metrics = getCustomerMetrics(c.id);
+        return [
+          c.name,
+          c.phone,
+          metrics.customerOrders.length,
+          metrics.invoiceIds.join(', '),
+          metrics.totalSpent,
+          metrics.totalProfit,
+          new Date(c.timestamp).toLocaleDateString('ar-SA')
+        ];
+      })
     ];
     const ws = XLSX.utils.aoa_to_sheet(wsData);
     const wb = XLSX.utils.book_new();
@@ -49,7 +69,7 @@ export default function Customers() {
       <div className="flex justify-between items-end mb-8">
         <div>
           <h1 className="text-3xl font-black text-slate-800">العملاء</h1>
-          <p className="text-slate-500 mt-2">سجل بيانات العملاء وأرقام هواتفهم</p>
+          <p className="text-slate-500 mt-2">سجل بيانات العملاء وأرقام هواتفهم وإحصائيات مشترياتهم</p>
         </div>
         <div className="flex gap-2">
           <button 
@@ -91,28 +111,46 @@ export default function Customers() {
               <tr>
                 <th className="p-4">رقم الهاتف</th>
                 <th className="p-4">اسم العميل</th>
-                <th className="p-4 text-center">عدد الطلبات السابقة</th>
+                <th className="p-4 text-center">عدد الطلبات</th>
+                <th className="p-4 text-center">أرقام الفواتير</th>
+                <th className="p-4 text-center">إجمالي المبلغ</th>
+                <th className="p-4 text-center">إجمالي الربح</th>
                 <th className="p-4 text-center">تاريخ التسجيل</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-slate-700">
               {filteredCustomers.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="p-12 text-center text-slate-400 text-lg font-bold">
+                  <td colSpan={7} className="p-12 text-center text-slate-400 text-lg font-bold">
                     لا يوجد عملاء مسجلين بالنظام حالياً.
                   </td>
                 </tr>
               ) : (
                 filteredCustomers.map((customer) => {
-                  const customerOrders = orders.filter(o => o.customer?.id === customer.id).length;
+                  const { customerOrders, invoiceIds, totalSpent, totalProfit } = getCustomerMetrics(customer.id);
                   return (
                     <tr key={customer.id} className="hover:bg-slate-50 transition">
                       <td className="p-4 font-mono font-bold" style={{ color: storeSettings.themeColor }} dir="ltr">{customer.phone}</td>
                       <td className="p-4 font-bold">{customer.name}</td>
                       <td className="p-4 text-center">
                         <span style={{ backgroundColor: storeSettings.themeColor + '15', color: storeSettings.themeColor }} className="px-3 py-1 rounded-lg font-bold">
-                          {customerOrders} طلب
+                          {customerOrders.length} طلب
                         </span>
+                      </td>
+                      <td className="p-4 text-center">
+                        <div className="flex flex-wrap justify-center gap-1 max-w-[150px] mx-auto">
+                          {invoiceIds.length > 0 ? invoiceIds.map(id => (
+                            <span key={id} className="bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded text-[10px] font-bold">
+                              #{id}
+                            </span>
+                          )) : <span className="text-slate-300">-</span>}
+                        </div>
+                      </td>
+                      <td className="p-4 text-center font-bold text-slate-900">
+                        {totalSpent.toLocaleString()} {storeSettings.currency}
+                      </td>
+                      <td className="p-4 text-center font-bold text-emerald-600">
+                        {totalProfit.toLocaleString()} {storeSettings.currency}
                       </td>
                       <td className="p-4 text-center text-slate-500">
                         {new Date(customer.timestamp).toLocaleDateString('ar-SA')}
