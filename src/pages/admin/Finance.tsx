@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useStore, Expense } from '../../store/useStore';
+import { useStore, type Expense } from '../../store/useStore';
 import { Wallet, Plus, Trash2, Search, FileText, ArrowUp, ArrowDown, Calendar, Edit3, X, Download } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
