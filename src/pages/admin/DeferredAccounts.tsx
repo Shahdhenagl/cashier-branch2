@@ -17,11 +17,11 @@ export default function DeferredAccounts() {
   // Calculate debts
   const customersWithDebt = customers.map(c => {
     const customerOrders = orders.filter(o => o.customer?.id === c.id);
-    const totalDebt = customerOrders.reduce((sum, o) => {
+    const totalDebt = Math.max(0, customerOrders.reduce((sum, o) => {
       const returnedValue = o.items.reduce((rSum, item) => rSum + (item.returned_quantity * item.sale_price), 0);
       // Debt = (Original Total - Returns) - Paid Amount
       return sum + ((o.total - returnedValue) - o.paid_amount);
-    }, 0);
+    }, 0));
     
     return { 
       ...c, 

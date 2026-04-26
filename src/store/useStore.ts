@@ -39,6 +39,14 @@ export interface Order {
   customer?: Customer;
 }
 
+export interface Expense {
+  id: string;
+  category: string;
+  amount: number;
+  note: string;
+  date: string;
+}
+
 export interface StoreSettings {
   name: string;
   currency: string;
@@ -59,6 +67,7 @@ interface CashierStore {
   customers: Customer[];
   cart: OrderItem[];
   orders: Order[];
+  expenses: Expense[];
   invoiceCounter: number;
   activeInvoiceId: string;
   isLoading: boolean;
@@ -84,6 +93,10 @@ interface CashierStore {
   addProduct: (product: Omit<Product, 'id'>) => Promise<void>;
   updateProduct: (id: string, product: Partial<Product>) => Promise<void>;
   deleteProduct: (id: string) => Promise<void>;
+  
+  // Expenses
+  addExpense: (expense: Omit<Expense, 'id' | 'date'>) => Promise<void>;
+  deleteExpense: (id: string) => Promise<void>;
 }
 
 // ─── Helpers ─────────────────────────────────────────────────
@@ -119,6 +132,7 @@ export const useStore = create<CashierStore>((set, get) => ({
   customers: [],
   cart: [],
   orders: [],
+  expenses: [],
   invoiceCounter: 1,
   activeInvoiceId: '1',
   isLoading: false,
@@ -128,7 +142,7 @@ export const useStore = create<CashierStore>((set, get) => ({
   loadAll: async () => {
     set({ isLoading: true, dbError: null });
     try {
-      const [settingsRes, categoriesRes, productsRes, customersRes, ordersRes, counterRes] =
+      const [settingsRes, categoriesRes, productsRes, customersRes, ordersRes, counterRes, expensesRes] =
         await Promise.all([
           supabase.from('store_settings').select('*').limit(1).maybeSingle(),
           supabase.from('categories').select('*').order('name'),
@@ -140,6 +154,7 @@ export const useStore = create<CashierStore>((set, get) => ({
             .order('created_at', { ascending: false })
             .limit(200),
           supabase.from('invoice_counter').select('current_value').limit(1).maybeSingle(),
+          supabase.from('expenses').select('*').order('created_at', { ascending: false }),
         ]);
 
       const settings = settingsRes.data ? mapSettings(settingsRes.data as Record<string, unknown>) : get().storeSettings;
@@ -189,6 +204,13 @@ export const useStore = create<CashierStore>((set, get) => ({
         products: (productsRes.data ?? []) as unknown as Product[],
         customers,
         orders,
+        expenses: ((expensesRes?.data ?? []) as any[]).map(e => ({
+          id: e.id,
+          category: e.category,
+          amount: e.amount,
+          note: e.note,
+          date: e.created_at
+        })),
         invoiceCounter: counter,
         activeInvoiceId: counter.toString(),
         isLoading: false,
@@ -480,5 +502,35 @@ export const useStore = create<CashierStore>((set, get) => ({
   deleteProduct: async (id) => {
     await supabase.from('products').delete().eq('id', id);
     set((state) => ({ products: state.products.filter((p) => p.id !== id) }));
+  },
+
+  // ── Expenses ──────────────────────────────────────────────
+  addExpense: async (expense) => {
+    const { data, error } = await supabase.from('expenses').insert({
+      category: expense.category,
+      amount: expense.amount,
+      note: expense.note
+    }).select().single();
+    
+    if (error) {
+      console.error("Add Expense Error:", error);
+      return;
+    }
+
+    if (data) {
+      const newExp: Expense = {
+        id: (data as any).id,
+        category: (data as any).category,
+        amount: (data as any).amount,
+        note: (data as any).note,
+        date: (data as any).created_at
+      };
+      set((state) => ({ expenses: [newExp, ...state.expenses] }));
+    }
+  },
+
+  deleteExpense: async (id) => {
+    await supabase.from('expenses').delete().eq('id', id);
+    set((state) => ({ expenses: state.expenses.filter((e) => e.id !== id) }));
   },
 }));

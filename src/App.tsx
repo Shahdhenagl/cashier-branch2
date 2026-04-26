@@ -10,6 +10,7 @@ import Customers from './pages/admin/Customers';
 import DeferredAccounts from './pages/admin/DeferredAccounts';
 import Settings from './pages/admin/Settings';
 import Analytics from './pages/admin/Analytics';
+import Finance from './pages/admin/Finance';
 import { useStore } from './store/useStore';
 
 function ThemeInjector() {
@@ -123,6 +124,7 @@ function App() {
             <Route path="invoices" element={<Invoices />} />
             <Route path="customers" element={<Customers />} />
             <Route path="deferred" element={<DeferredAccounts />} />
+            <Route path="finance" element={<Finance />} />
             <Route path="settings" element={<Settings />} />
           </Route>
         </Routes>

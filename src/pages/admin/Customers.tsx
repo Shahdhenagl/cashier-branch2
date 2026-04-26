@@ -36,11 +36,11 @@ export default function Customers() {
     }, 0);
 
     // Debt = (Original Total - Returns) - Paid Amount
-    // This allows returns to "pay off" existing debt
-    const totalDebt = customerOrders.reduce((sum, o) => {
+    // Cap at 0 because user handles cash refunds for returns at the counter
+    const totalDebt = Math.max(0, customerOrders.reduce((sum, o) => {
       const returnedValue = o.items.reduce((rSum, item) => rSum + (item.returned_quantity * item.sale_price), 0);
       return sum + ((o.total - returnedValue) - o.paid_amount);
-    }, 0);
+    }, 0));
 
     return { customerOrders, totalSpent, totalProfit, totalDebt, totalReturns };
   };
@@ -271,10 +271,6 @@ export default function Customers() {
                           <span className="bg-red-50 text-red-600 px-3 py-1.5 rounded-xl font-black border border-red-100">
                             {totalDebt.toLocaleString()} <span className="text-[10px] font-normal">{storeSettings.currency}</span>
                           </span>
-                        ) : totalDebt < 0 ? (
-                          <span className="bg-emerald-50 text-emerald-600 px-3 py-1.5 rounded-xl font-black border border-emerald-100">
-                            {Math.abs(totalDebt).toLocaleString()} <span className="text-[10px] font-normal">رصيد دائن</span>
-                          </span>
                         ) : (
                           <span className="text-emerald-500 font-bold">خالص</span>
                         )}
@@ -379,9 +375,8 @@ export default function Customers() {
                   </div>
                   <div>
                     <p className="text-[10px] font-bold text-slate-400 mb-0.5">المديونية الحالية</p>
-                    <p className={`text-lg font-black ${selectedCustomer.totalDebt < 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                      {Math.abs(selectedCustomer.totalDebt).toLocaleString()} {storeSettings.currency}
-                      {selectedCustomer.totalDebt < 0 && <span className="text-[10px] block font-bold">رصيد دائن</span>}
+                    <p className={`text-lg font-black ${selectedCustomer.totalDebt <= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                      {selectedCustomer.totalDebt.toLocaleString()} {storeSettings.currency}
                     </p>
                   </div>
                 </div>
