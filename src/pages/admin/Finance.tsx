@@ -1,13 +1,16 @@
 import { useState } from 'react';
-import { useStore } from '../../store/useStore';
-import { Wallet, Plus, Trash2, Search, FileText, Table as TableIcon, ArrowUpCircle, ArrowDownCircle, Calendar, Filter, Download } from 'lucide-react';
+import { useStore, Expense } from '../../store/useStore';
+import { Wallet, Plus, Trash2, Search, FileText, ArrowUpCircle, ArrowDownCircle, Calendar, Download, Edit3, X, FileSpreadsheet, File } from 'lucide-react';
 import * as XLSX from 'xlsx';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 export default function Finance() {
-  const { expenses, orders, storeSettings, addExpense, deleteExpense } = useStore();
+  const { expenses, orders, storeSettings, addExpense, updateExpense, deleteExpense } = useStore();
   const [searchQuery, setSearchQuery] = useState('');
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [newExpense, setNewExpense] = useState({ category: 'عام', amount: '', note: '' });
+  const [showModal, setShowModal] = useState(false);
+  const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
+  const [formData, setFormData] = useState({ category: 'عام', amount: '', note: '' });
 
   // Filter expenses
   const filteredExpenses = expenses.filter(e => 
@@ -26,19 +29,35 @@ export default function Finance() {
 
   const netSafeBalance = (totalSales + totalPayments) - totalReturnsValue - totalExpensesValue;
 
-  const handleAddExpense = async () => {
-    const amountNum = parseFloat(newExpense.amount);
-    if (!amountNum || amountNum <= 0) {
-      alert("الرجاء إدخال مبلغ صحيح");
-      return;
+  const handleOpenModal = (expense: Expense | null = null) => {
+    if (expense) {
+      setEditingExpense(expense);
+      setFormData({ category: expense.category, amount: expense.amount.toString(), note: expense.note });
+    } else {
+      setEditingExpense(null);
+      setFormData({ category: 'عام', amount: '', note: '' });
     }
-    await addExpense({
-      category: newExpense.category,
-      amount: amountNum,
-      note: newExpense.note
-    });
-    setNewExpense({ category: 'عام', amount: '', note: '' });
-    setShowAddModal(false);
+    setShowModal(true);
+  };
+
+  const handleSubmit = async () => {
+    const amountNum = parseFloat(formData.amount);
+    if (!amountNum || amountNum <= 0) return;
+
+    if (editingExpense) {
+      await updateExpense(editingExpense.id, {
+        category: formData.category,
+        amount: amountNum,
+        note: formData.note
+      });
+    } else {
+      await addExpense({
+        category: formData.category,
+        amount: amountNum,
+        note: formData.note
+      });
+    }
+    setShowModal(false);
   };
 
   const exportToExcel = () => {
@@ -46,11 +65,11 @@ export default function Finance() {
       ['تقرير الخزينة والمصاريف', '', '', ''],
       ['التاريخ', new Date().toLocaleString('ar-SA'), '', ''],
       [''],
-      ['إجمالي المبيعات (كاش)', totalSales, '', ''],
-      ['تحصيل مديونيات', totalPayments, '', ''],
-      ['إجمالي المرتجعات (خارج)', totalReturnsValue, '', ''],
-      ['إجمالي المصاريف (خارج)', totalExpensesValue, '', ''],
-      ['صافي الخزينة الحالي', netSafeBalance, '', ''],
+      ['إجمالي المبيعات (كاش)', totalSales],
+      ['تحصيل مديونيات', totalPayments],
+      ['إجمالي المرتجعات (خارج)', totalReturnsValue],
+      ['إجمالي المصاريف (خارج)', totalExpensesValue],
+      ['صافي الخزينة الحالي', netSafeBalance],
       [''],
       ['سجل المصاريف التفصيلي'],
       ['الفئة', 'المبلغ', 'الملاحظات', 'التاريخ'],
@@ -62,113 +81,186 @@ export default function Finance() {
     XLSX.writeFile(wb, `finance_report_${new Date().toLocaleDateString()}.xlsx`);
   };
 
+  const exportToPDF = () => {
+    const doc = new jsPDF('p', 'mm', 'a4');
+    
+    // Add font (using a standard one for now, but usually needs a specific Arabic font)
+    doc.setFont("helvetica", "bold");
+    doc.text("Finance Report - Financial Status", 105, 20, { align: 'center' });
+    
+    const summaryData = [
+      ["Total Sales", `${totalSales} ${storeSettings.currency}`],
+      ["Payments Collected", `${totalPayments} ${storeSettings.currency}`],
+      ["Total Returns", `${totalReturnsValue} ${storeSettings.currency}`],
+      ["Total Expenses", `${totalExpensesValue} ${storeSettings.currency}`],
+      ["Net Safe Balance", `${netSafeBalance} ${storeSettings.currency}`],
+    ];
+
+    autoTable(doc, {
+      startY: 30,
+      head: [["Category", "Value"]],
+      body: summaryData,
+      theme: 'striped',
+    });
+
+    const expensesData = expenses.map(e => [
+      e.category,
+      e.amount.toString(),
+      e.note,
+      new Date(e.date).toLocaleDateString('ar-SA')
+    ]);
+
+    autoTable(doc, {
+      startY: (doc as any).lastAutoTable.finalY + 10,
+      head: [["Category", "Amount", "Note", "Date"]],
+      body: expensesData,
+      theme: 'grid',
+    });
+
+    doc.save(`finance_report_${new Date().toLocaleDateString()}.pdf`);
+  };
+
   return (
-    <div className="p-8 max-w-7xl mx-auto">
+    <div className="p-8 max-w-7xl mx-auto" dir="rtl">
       {/* Header */}
-      <div className="flex justify-between items-end mb-8">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
         <div>
           <h1 className="text-3xl font-black text-slate-800 flex items-center gap-3">
-            <Wallet style={{ color: storeSettings.themeColor }} size={32} />
+            <div className="p-2 bg-indigo-600 rounded-2xl text-white shadow-lg shadow-indigo-200">
+              <Wallet size={28} />
+            </div>
             الخزينة والحسابات
           </h1>
           <p className="text-slate-500 mt-2 font-medium">مراقبة الدخل، المصاريف، وصافي أرباح الخزينة</p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-3">
+          <div className="flex bg-white rounded-xl shadow-sm border border-slate-200 p-1">
+             <button 
+              onClick={exportToPDF}
+              className="flex items-center gap-2 hover:bg-slate-50 text-slate-700 px-4 py-2 rounded-lg text-sm font-bold transition"
+            >
+              <File size={16} className="text-red-500" /> PDF
+            </button>
+            <div className="w-px bg-slate-200 my-1 mx-1"></div>
+            <button 
+              onClick={exportToExcel}
+              className="flex items-center gap-2 hover:bg-slate-50 text-slate-700 px-4 py-2 rounded-lg text-sm font-bold transition"
+            >
+              <FileSpreadsheet size={16} className="text-emerald-500" /> Excel
+            </button>
+          </div>
           <button 
-            onClick={exportToExcel}
-            className="flex items-center gap-2 bg-slate-800 text-white px-5 py-2.5 rounded-xl font-bold hover:bg-slate-900 transition shadow-lg"
-          >
-            <Download size={18} /> تصدير التقرير المالبي
-          </button>
-          <button 
-            onClick={() => setShowAddModal(true)}
+            onClick={() => handleOpenModal()}
             style={{ backgroundColor: storeSettings.themeColor }}
-            className="flex items-center gap-2 text-white px-6 py-2.5 rounded-xl font-bold hover:opacity-90 transition shadow-lg"
+            className="flex items-center gap-2 text-white px-6 py-2.5 rounded-xl font-bold hover:opacity-90 transition shadow-lg shadow-indigo-100"
           >
-            <Plus size={20} /> إضافة مصاريف / تكاليف
+            <Plus size={20} /> إضافة عملية
           </button>
         </div>
       </div>
 
       {/* Financial Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <div className="bg-white p-8 rounded-[32px] shadow-sm border border-slate-100 flex flex-col justify-between relative overflow-hidden group">
-          <div className="absolute top-0 left-0 w-2 h-full bg-emerald-500" />
-          <div className="flex justify-between items-start mb-4">
+        {/* Incomes Card */}
+        <div className="bg-white p-6 rounded-[32px] shadow-sm border border-slate-100 relative overflow-hidden">
+          <div className="flex items-center gap-4 mb-4">
             <div className="w-12 h-12 bg-emerald-50 rounded-2xl flex items-center justify-center text-emerald-600">
               <ArrowUpCircle size={28} />
             </div>
-            <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full">+ الدخل</span>
+            <div>
+              <p className="text-slate-400 font-bold text-xs">إجمالي الداخل</p>
+              <p className="text-xs font-black text-emerald-600 uppercase tracking-tighter">(مبيعات + تحصيل)</p>
+            </div>
           </div>
-          <div>
-            <p className="text-slate-400 font-bold text-sm mb-1">إجمالي الداخل (مبيعات + تحصيل)</p>
-            <h3 className="text-3xl font-black text-slate-800">{(totalSales + totalPayments).toLocaleString()} <span className="text-sm font-normal text-slate-400">{storeSettings.currency}</span></h3>
-          </div>
+          <h3 className="text-3xl font-black text-slate-800">
+            {(totalSales + totalPayments).toLocaleString()} 
+            <span className="text-sm font-normal text-slate-400 mr-2">{storeSettings.currency}</span>
+          </h3>
         </div>
 
-        <div className="bg-white p-8 rounded-[32px] shadow-sm border border-slate-100 flex flex-col justify-between relative overflow-hidden">
-          <div className="absolute top-0 left-0 w-2 h-full bg-red-500" />
-          <div className="flex justify-between items-start mb-4">
+        {/* Expenses Card */}
+        <div className="bg-white p-6 rounded-[32px] shadow-sm border border-slate-100 relative overflow-hidden">
+          <div className="flex items-center gap-4 mb-4">
             <div className="w-12 h-12 bg-red-50 rounded-2xl flex items-center justify-center text-red-600">
               <ArrowDownCircle size={28} />
             </div>
-            <span className="text-xs font-bold text-red-600 bg-red-50 px-3 py-1 rounded-full">- الخارج</span>
+            <div>
+              <p className="text-slate-400 font-bold text-xs">إجمالي الخارج</p>
+              <p className="text-xs font-black text-red-600 uppercase tracking-tighter">(مرتجعات + مصاريف)</p>
+            </div>
           </div>
-          <div>
-            <p className="text-slate-400 font-bold text-sm mb-1">إجمالي الخارج (مرتجعات + مصاريف)</p>
-            <h3 className="text-3xl font-black text-slate-800">{(totalReturnsValue + totalExpensesValue).toLocaleString()} <span className="text-sm font-normal text-slate-400">{storeSettings.currency}</span></h3>
-          </div>
+          <h3 className="text-3xl font-black text-slate-800">
+            {(totalReturnsValue + totalExpensesValue).toLocaleString()} 
+            <span className="text-sm font-normal text-slate-400 mr-2">{storeSettings.currency}</span>
+          </h3>
         </div>
 
-        <div className="bg-slate-900 p-8 rounded-[32px] shadow-2xl flex flex-col justify-between relative overflow-hidden">
+        {/* Balance Card - RESTYLED */}
+        <div className="relative group overflow-hidden rounded-[32px] p-6 shadow-2xl transition-all duration-500 hover:scale-[1.02]">
+           {/* Dynamic Gradient Background */}
           <div 
-            className="absolute -right-8 -bottom-8 w-40 h-40 opacity-10"
-            style={{ backgroundColor: storeSettings.themeColor, borderRadius: '50%' }}
+            className="absolute inset-0 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 z-0"
           />
-          <div className="flex justify-between items-start mb-4">
-            <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center text-white">
-              <Wallet size={28} />
+          <div 
+            className="absolute top-0 right-0 w-32 h-32 blur-3xl opacity-20 -mr-16 -mt-16 rounded-full"
+            style={{ backgroundColor: storeSettings.themeColor }}
+          />
+          <div 
+            className="absolute bottom-0 left-0 w-32 h-32 blur-3xl opacity-10 -ml-16 -mb-16 rounded-full bg-emerald-500"
+          />
+          
+          <div className="relative z-10 h-full flex flex-col justify-between">
+            <div className="flex justify-between items-start">
+              <div 
+                className="w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-lg backdrop-blur-md bg-white/10 border border-white/20"
+              >
+                <Wallet size={24} />
+              </div>
+              <div className="px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 text-[10px] font-black uppercase tracking-widest animate-pulse">
+                حالة الخزينة: آمنة
+              </div>
             </div>
-            <span className="text-xs font-bold text-white bg-white/10 px-3 py-1 rounded-full">الرصيد الفعلي</span>
-          </div>
-          <div>
-            <p className="text-slate-400 font-bold text-sm mb-1">صافي رصيد الخزينة الحالي</p>
-            <h3 className="text-4xl font-black text-white">{netSafeBalance.toLocaleString()} <span className="text-sm font-normal text-slate-500">{storeSettings.currency}</span></h3>
+            
+            <div className="mt-8">
+              <p className="text-slate-400 font-bold text-xs mb-1 uppercase tracking-wider">صافي رصيد الخزينة الفعلي</p>
+              <div className="flex items-baseline gap-2">
+                <h3 className="text-4xl font-black text-white tracking-tight">
+                  {netSafeBalance.toLocaleString()}
+                </h3>
+                <span className="text-lg font-bold text-slate-500">{storeSettings.currency}</span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Main Content: Expenses Table */}
+      {/* Table Section */}
       <div className="bg-white rounded-[32px] shadow-sm border border-slate-100 overflow-hidden">
-        <div className="p-6 border-b border-slate-50 flex items-center justify-between bg-slate-50/30">
-          <div className="flex items-center gap-4 flex-1">
-            <div className="relative w-full max-w-md">
-              <Search className="absolute right-4 top-3 text-slate-400" size={18} />
-              <input
-                type="text"
-                placeholder="ابحث في سجل المصاريف..."
-                className="w-full bg-white border border-slate-200 rounded-2xl py-2.5 pr-12 pl-4 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 shadow-sm transition-all"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </div>
+        <div className="p-6 border-b border-slate-50 flex flex-col md:flex-row items-center justify-between gap-4 bg-slate-50/30">
+          <div className="relative w-full max-w-md">
+            <Search className="absolute right-4 top-3 text-slate-400" size={18} />
+            <input
+              type="text"
+              placeholder="ابحث في سجل المصاريف..."
+              className="w-full bg-white border border-slate-200 rounded-2xl py-2.5 pr-12 pl-4 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 shadow-sm transition-all"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
           </div>
-          <div className="flex gap-2">
-             <div className="bg-white border border-slate-200 px-4 py-2 rounded-xl flex items-center gap-2 text-sm font-bold text-slate-600 shadow-sm">
-               <Calendar size={16} /> اليوم: {new Date().toLocaleDateString('ar-SA')}
-             </div>
+          <div className="bg-white border border-slate-200 px-4 py-2 rounded-xl flex items-center gap-2 text-sm font-bold text-slate-600 shadow-sm">
+            <Calendar size={16} /> {new Date().toLocaleDateString('ar-SA')}
           </div>
         </div>
 
         <div className="overflow-x-auto">
           <table className="w-full text-right">
             <thead>
-              <tr className="bg-slate-50/50 text-slate-400 text-xs font-black uppercase tracking-widest border-b border-slate-100">
+              <tr className="bg-slate-50/50 text-slate-400 text-[10px] font-black uppercase tracking-widest border-b border-slate-100">
                 <th className="p-6">البند / الفئة</th>
                 <th className="p-6">المبلغ</th>
-                <th className="p-6">ملاحظات إضافية</th>
-                <th className="p-6">التاريخ والوقت</th>
-                <th className="p-6 text-left">إجراءات</th>
+                <th className="p-6 text-center">ملاحظات إضافية</th>
+                <th className="p-6 text-center">التاريخ</th>
+                <th className="p-6 text-left">الإجراءات</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
@@ -177,7 +269,7 @@ export default function Finance() {
                   <td colSpan={5} className="p-20 text-center">
                     <div className="flex flex-col items-center opacity-20">
                       <FileText size={64} />
-                      <p className="text-xl font-bold mt-4">لا توجد مصاريف مسجلة</p>
+                      <p className="text-xl font-bold mt-4">لا توجد عمليات مسجلة</p>
                     </div>
                   </td>
                 </tr>
@@ -185,26 +277,34 @@ export default function Finance() {
                 filteredExpenses.map((expense) => (
                   <tr key={expense.id} className="hover:bg-slate-50/50 transition-colors group">
                     <td className="p-6">
-                      <span className="inline-flex items-center gap-2 px-3 py-1 bg-slate-100 text-slate-700 rounded-lg font-bold text-sm">
+                      <span className="inline-flex items-center gap-2 px-3 py-1 bg-indigo-50 text-indigo-700 rounded-lg font-bold text-xs border border-indigo-100">
                         {expense.category}
                       </span>
                     </td>
                     <td className="p-6 font-black text-red-600 text-lg">
                       {expense.amount.toLocaleString()} <span className="text-xs font-normal text-slate-400">{storeSettings.currency}</span>
                     </td>
-                    <td className="p-6 text-slate-500 font-medium max-w-md truncate">
+                    <td className="p-6 text-slate-500 font-medium text-center">
                       {expense.note || '—'}
                     </td>
-                    <td className="p-6 text-slate-400 text-sm font-mono">
-                      {new Date(expense.date).toLocaleString('ar-SA')}
+                    <td className="p-6 text-slate-400 text-sm font-bold text-center">
+                      {new Date(expense.date).toLocaleDateString('ar-SA')}
                     </td>
                     <td className="p-6 text-left">
-                      <button 
-                        onClick={() => deleteExpense(expense.id)}
-                        className="p-3 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-2xl transition-all opacity-0 group-hover:opacity-100"
-                      >
-                        <Trash2 size={18} />
-                      </button>
+                      <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button 
+                          onClick={() => handleOpenModal(expense)}
+                          className="p-2.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all"
+                        >
+                          <Edit3 size={18} />
+                        </button>
+                        <button 
+                          onClick={() => deleteExpense(expense.id)}
+                          className="p-2.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"
+                        >
+                          <Trash2 size={18} />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -214,26 +314,29 @@ export default function Finance() {
         </div>
       </div>
 
-      {/* Add Expense Modal */}
-      {showAddModal && (
+      {/* Modal */}
+      {showModal && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white rounded-[40px] shadow-2xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200">
-            <div className="p-8 bg-slate-900 text-white flex justify-between items-center">
+            <div 
+              className="p-8 text-white flex justify-between items-center"
+              style={{ backgroundColor: storeSettings.themeColor }}
+            >
               <div>
-                <h2 className="text-2xl font-black">إضافة مصاريف جديدة</h2>
-                <p className="text-slate-400 text-sm mt-1">سيتم خصم هذا المبلغ من رصيد الخزينة</p>
+                <h2 className="text-2xl font-black">{editingExpense ? 'تعديل العملية' : 'إضافة عملية جديدة'}</h2>
+                <p className="text-white/70 text-sm mt-1">سجل تفاصيل المصاريف أو التكاليف</p>
               </div>
-              <button onClick={() => setShowAddModal(false)} className="bg-white/10 p-2 rounded-full hover:bg-white/20 transition">
-                <Plus size={24} className="rotate-45" />
+              <button onClick={() => setShowModal(false)} className="bg-white/10 p-2 rounded-full hover:bg-white/20 transition text-white">
+                <X size={24} />
               </button>
             </div>
             <div className="p-8 space-y-6">
               <div>
-                <label className="block text-sm font-bold text-slate-700 mb-2">الفئة / البند</label>
+                <label className="block text-sm font-bold text-slate-700 mb-2 uppercase tracking-wide">الفئة / البند</label>
                 <select 
                   className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 focus:ring-2 focus:ring-indigo-500/20 outline-none font-bold"
-                  value={newExpense.category}
-                  onChange={e => setNewExpense({...newExpense, category: e.target.value})}
+                  value={formData.category}
+                  onChange={e => setFormData({...formData, category: e.target.value})}
                 >
                   <option value="عام">عام</option>
                   <option value="إيجار">إيجار</option>
@@ -242,36 +345,37 @@ export default function Finance() {
                   <option value="نقل/توصيل">نقل / توصيل</option>
                   <option value="صيانة">صيانة</option>
                   <option value="مشتريات للمحل">مشتريات للمحل</option>
+                  <option value="إهلاك">إهلاك</option>
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-bold text-slate-700 mb-2">المبلغ</label>
+                <label className="block text-sm font-bold text-slate-700 mb-2 uppercase tracking-wide">المبلغ</label>
                 <div className="relative">
                   <input 
                     type="number" 
                     placeholder="0.00"
                     className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 pr-12 focus:ring-2 focus:ring-indigo-500/20 outline-none font-black text-2xl text-red-600"
-                    value={newExpense.amount}
-                    onChange={e => setNewExpense({...newExpense, amount: e.target.value})}
+                    value={formData.amount}
+                    onChange={e => setFormData({...formData, amount: e.target.value})}
                   />
                   <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">{storeSettings.currency}</span>
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-bold text-slate-700 mb-2">ملاحظات</label>
+                <label className="block text-sm font-bold text-slate-700 mb-2 uppercase tracking-wide">ملاحظات</label>
                 <textarea 
-                  placeholder="مثال: فاتورة الكهرباء لشهر مارس..."
+                  placeholder="اكتب ملاحظاتك هنا..."
                   className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 h-32 focus:ring-2 focus:ring-indigo-500/20 outline-none font-medium resize-none"
-                  value={newExpense.note}
-                  onChange={e => setNewExpense({...newExpense, note: e.target.value})}
+                  value={formData.note}
+                  onChange={e => setFormData({...formData, note: e.target.value})}
                 />
               </div>
               <button 
-                onClick={handleAddExpense}
+                onClick={handleSubmit}
                 style={{ backgroundColor: storeSettings.themeColor }}
                 className="w-full text-white py-5 rounded-2xl font-black text-lg shadow-xl hover:opacity-90 transition-all flex items-center justify-center gap-3"
               >
-                تأكيد العملية وخصم من الخزينة
+                {editingExpense ? 'حفظ التعديلات' : 'إضافة العملية'}
               </button>
             </div>
           </div>

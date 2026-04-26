@@ -96,6 +96,7 @@ interface CashierStore {
   
   // Expenses
   addExpense: (expense: Omit<Expense, 'id' | 'date'>) => Promise<void>;
+  updateExpense: (id: string, expense: Partial<Expense>) => Promise<void>;
   deleteExpense: (id: string) => Promise<void>;
 }
 
@@ -537,6 +538,25 @@ export const useStore = create<CashierStore>((set, get) => ({
         date: (data as any).created_at
       };
       set((state) => ({ expenses: [newExp, ...state.expenses] }));
+    }
+  },
+
+  updateExpense: async (id, expense) => {
+    const { data, error } = await supabase.from('expenses').update({
+      category: expense.category,
+      amount: expense.amount,
+      note: expense.note
+    }).eq('id', id).select().single();
+
+    if (error) {
+      console.error("Update Expense Error:", error);
+      return;
+    }
+
+    if (data) {
+      set((state) => ({
+        expenses: state.expenses.map((e) => (e.id === id ? { ...e, ...expense } : e))
+      }));
     }
   },
 
