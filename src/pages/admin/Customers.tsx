@@ -103,8 +103,8 @@ export default function Customers() {
   const handlePrintInvoice = (order: any) => {
     const printDate = new Date(order.date).toLocaleString('ar-SA');
     const isPayment = order.type === 'payment';
-    const subtotal = order.items.reduce((sum: number, item: any) => sum + (item.sale_price * item.quantity), 0);
-    const taxValue = order.total - subtotal;
+    // Removed unused variables
+    // Removed unused taxValue
     
     let itemsHtml = '';
     if (isPayment) {
