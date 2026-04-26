@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useStore, Expense } from '../../store/useStore';
-import { Wallet, Plus, Trash2, Search, FileText, ArrowUpCircle, ArrowDownCircle, Calendar, Download, Edit3, X, FileSpreadsheet, File } from 'lucide-react';
+import { Wallet, Plus, Trash2, Search, FileText, ArrowUp, ArrowDown, Calendar, Edit3, X, Download } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -84,7 +84,6 @@ export default function Finance() {
   const exportToPDF = () => {
     const doc = new jsPDF('p', 'mm', 'a4');
     
-    // Add font (using a standard one for now, but usually needs a specific Arabic font)
     doc.setFont("helvetica", "bold");
     doc.text("Finance Report - Financial Status", 105, 20, { align: 'center' });
     
@@ -110,8 +109,10 @@ export default function Finance() {
       new Date(e.date).toLocaleDateString('ar-SA')
     ]);
 
+    const finalY = (doc as any).lastAutoTable?.finalY || 100;
+
     autoTable(doc, {
-      startY: (doc as any).lastAutoTable.finalY + 10,
+      startY: finalY + 10,
       head: [["Category", "Amount", "Note", "Date"]],
       body: expensesData,
       theme: 'grid',
@@ -139,14 +140,14 @@ export default function Finance() {
               onClick={exportToPDF}
               className="flex items-center gap-2 hover:bg-slate-50 text-slate-700 px-4 py-2 rounded-lg text-sm font-bold transition"
             >
-              <File size={16} className="text-red-500" /> PDF
+              <FileText size={16} className="text-red-500" /> PDF
             </button>
             <div className="w-px bg-slate-200 my-1 mx-1"></div>
             <button 
               onClick={exportToExcel}
               className="flex items-center gap-2 hover:bg-slate-50 text-slate-700 px-4 py-2 rounded-lg text-sm font-bold transition"
             >
-              <FileSpreadsheet size={16} className="text-emerald-500" /> Excel
+              <Download size={16} className="text-emerald-500" /> Excel
             </button>
           </div>
           <button 
@@ -165,7 +166,7 @@ export default function Finance() {
         <div className="bg-white p-6 rounded-[32px] shadow-sm border border-slate-100 relative overflow-hidden">
           <div className="flex items-center gap-4 mb-4">
             <div className="w-12 h-12 bg-emerald-50 rounded-2xl flex items-center justify-center text-emerald-600">
-              <ArrowUpCircle size={28} />
+              <ArrowUp size={28} />
             </div>
             <div>
               <p className="text-slate-400 font-bold text-xs">إجمالي الداخل</p>
@@ -182,7 +183,7 @@ export default function Finance() {
         <div className="bg-white p-6 rounded-[32px] shadow-sm border border-slate-100 relative overflow-hidden">
           <div className="flex items-center gap-4 mb-4">
             <div className="w-12 h-12 bg-red-50 rounded-2xl flex items-center justify-center text-red-600">
-              <ArrowDownCircle size={28} />
+              <ArrowDown size={28} />
             </div>
             <div>
               <p className="text-slate-400 font-bold text-xs">إجمالي الخارج</p>
