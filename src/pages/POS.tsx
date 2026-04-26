@@ -200,8 +200,9 @@ ${customerBlock}
       setCustomerName(existingCust.name);
       const cOrders = orders.filter(o => o.customer?.id === existingCust.id);
       const cDebt = cOrders.reduce((sum, o) => {
-        // Debt = Original Total - Amount Paid (Ignoring returns per user request)
-        return sum + (o.total - o.paid_amount);
+        const returnedValue = o.items.reduce((rSum, item) => rSum + (item.returned_quantity * item.sale_price), 0);
+        // Debt = (Original Total - Returns) - Paid Amount
+        return sum + ((o.total - returnedValue) - o.paid_amount);
       }, 0);
       setCustomerDebt(cDebt > 0 ? cDebt : 0);
     } else {

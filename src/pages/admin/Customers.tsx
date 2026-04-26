@@ -17,14 +17,11 @@ export default function Customers() {
 
   const getCustomerMetrics = (customerId: string) => {
     const customerOrders = orders.filter(o => o.customer?.id === customerId);
-    const invoiceIds = customerOrders.map(o => o.id);
     
-    // Total returns (always positive)
     const totalReturns = customerOrders.reduce((sum, o) => {
       return sum + o.items.reduce((iSum, item) => iSum + (item.returned_quantity * item.sale_price), 0);
     }, 0);
 
-    // Net Purchases = Sum of Sales Totals - Returns
     const totalSpent = customerOrders.reduce((sum, o) => {
       if (o.type === 'payment') return sum;
       return sum + o.total;
@@ -38,12 +35,14 @@ export default function Customers() {
       }, 0);
     }, 0);
 
-    // Debt = Original Total - Amount Paid (Ignoring returns because they are refunded in cash)
+    // Debt = (Original Total - Returns) - Paid Amount
+    // This allows returns to "pay off" existing debt
     const totalDebt = customerOrders.reduce((sum, o) => {
-      return sum + (o.total - o.paid_amount);
+      const returnedValue = o.items.reduce((rSum, item) => rSum + (item.returned_quantity * item.sale_price), 0);
+      return sum + ((o.total - returnedValue) - o.paid_amount);
     }, 0);
 
-    return { customerOrders, invoiceIds, totalSpent, totalProfit, totalDebt, totalReturns };
+    return { customerOrders, totalSpent, totalProfit, totalDebt, totalReturns };
   };
 
   const exportExcel = () => {
@@ -274,10 +273,10 @@ export default function Customers() {
                           </span>
                         ) : totalDebt < 0 ? (
                           <span className="bg-emerald-50 text-emerald-600 px-3 py-1.5 rounded-xl font-black border border-emerald-100">
-                            {Math.abs(totalDebt).toLocaleString()} <span className="text-[10px] font-normal">له رصيد</span>
+                            {Math.abs(totalDebt).toLocaleString()} <span className="text-[10px] font-normal">رصيد دائن</span>
                           </span>
                         ) : (
-                          <span className="text-emerald-500 font-bold">مدفوع</span>
+                          <span className="text-emerald-500 font-bold">خالص</span>
                         )}
                       </td>
                       <td className="p-5 text-center text-slate-500 font-medium">
@@ -380,7 +379,10 @@ export default function Customers() {
                   </div>
                   <div>
                     <p className="text-[10px] font-bold text-slate-400 mb-0.5">المديونية الحالية</p>
-                    <p className="text-lg font-black text-red-600">{selectedCustomer.totalDebt.toLocaleString()} {storeSettings.currency}</p>
+                    <p className={`text-lg font-black ${selectedCustomer.totalDebt < 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                      {Math.abs(selectedCustomer.totalDebt).toLocaleString()} {storeSettings.currency}
+                      {selectedCustomer.totalDebt < 0 && <span className="text-[10px] block font-bold">رصيد دائن</span>}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -410,7 +412,7 @@ export default function Customers() {
                       selectedCustomer.customerOrders.map((order: any) => {
                         const returnedValue = order.items.reduce((sum: number, i: any) => sum + (i.returned_quantity * i.sale_price), 0);
                         const netTotal = order.total - returnedValue;
-                        const rowDebt = order.total - order.paid_amount;
+                        const rowDebt = netTotal - order.paid_amount;
                         const isDebt = rowDebt > 0;
                         const isPayment = order.type === 'payment';
                         
@@ -435,7 +437,7 @@ export default function Customers() {
                                   غير مكتملة
                                 </span>
                               ) : rowDebt < 0 ? (
-                                <span className="text-emerald-600 text-[10px] font-bold">دفع زائد</span>
+                                <span className="text-emerald-600 text-[10px] font-bold">رصيد متبقي</span>
                               ) : (
                                 <span className="text-emerald-500 text-[10px] font-bold">مدفوعة بالكامل</span>
                               )}
