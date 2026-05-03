@@ -560,7 +560,8 @@ ${customerBlock}
                 placeholder="اسم العميل..." 
               />
               {showCustomerSuggestions && filteredCustomers.length > 0 && (
-                <div className="absolute bottom-full left-0 right-0 mb-2 bg-white dark:bg-slate-800 rounded-xl shadow-2xl border border-gray-100 dark:border-slate-700 overflow-hidden z-[110] animate-in slide-in-from-bottom-2 duration-200">
+                <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-slate-800 rounded-xl shadow-2xl border border-gray-100 dark:border-slate-700 overflow-hidden z-[110] animate-in slide-in-from-top-2 duration-200">
+
                   <div className="p-2 border-b border-gray-50 dark:border-slate-700 text-[10px] font-bold text-gray-400 uppercase tracking-wider bg-gray-50/50 dark:bg-slate-900/50">نتائج البحث</div>
                   {filteredCustomers.map(c => (
                     <button
