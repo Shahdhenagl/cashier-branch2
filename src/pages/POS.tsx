@@ -522,7 +522,8 @@ ${customerBlock}
             background: `linear-gradient(160deg, ${storeSettings.themeColor} 0%, ${storeSettings.themeColor}dd 100%)`,
             boxShadow: `0 8px 32px ${storeSettings.themeColor}66`
           }}
-          className="p-4 text-white flex flex-col relative overflow-hidden h-auto rounded-bl-[40px] gap-3"
+          className="p-4 text-white flex flex-col relative h-auto rounded-bl-[40px] gap-3"
+
         >
           <div className="absolute inset-0 bg-black/20"></div>
           <div className="relative flex justify-between items-center">
