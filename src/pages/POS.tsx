@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useStore } from '../store/useStore';
-import { ShoppingCart, Search, Plus, Minus, Trash2, Banknote, RefreshCcw, Moon, Sun, ArrowRightLeft, X, Printer } from 'lucide-react';
+import { ShoppingCart, Search, Plus, Minus, Trash2, Banknote, RefreshCcw, Moon, Sun, ArrowRightLeft, X, Printer, User } from 'lucide-react';
+import { normalizeArabic } from '../utils/textUtils';
+
 
 export default function POS() {
   const { products, categories, cart, addToCart, removeFromCart, updateQuantity, clearCart, checkout, processReturn, storeSettings, orders, activeInvoiceId, customers } = useStore();
@@ -13,6 +15,8 @@ export default function POS() {
   const [customerName, setCustomerName] = useState('');
   const [paidAmountStr, setPaidAmountStr] = useState('');
   const [customerDebt, setCustomerDebt] = useState<number>(0);
+  const [showCustomerSuggestions, setShowCustomerSuggestions] = useState(false);
+
   
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [showReturnsModal, setShowReturnsModal] = useState(false);
@@ -213,6 +217,27 @@ ${customerBlock}
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setCustomerPhone(e.target.value);
   };
+
+  const handleCustomerNameChange = (val: string) => {
+    setCustomerName(val);
+    if (val.length > 0) {
+      setShowCustomerSuggestions(true);
+    } else {
+      setShowCustomerSuggestions(false);
+    }
+  };
+
+  const selectCustomer = (cust: any) => {
+    setCustomerName(cust.name);
+    setCustomerPhone(cust.phone);
+    setShowCustomerSuggestions(false);
+  };
+
+  const filteredCustomers = customers.filter(c => 
+    normalizeArabic(c.name).includes(normalizeArabic(customerName)) ||
+    c.phone.includes(customerName)
+  ).slice(0, 5);
+
 
   return (
     <div className="flex h-screen bg-gray-50 dark:bg-slate-900 transition-colors duration-300 overflow-hidden font-sans text-gray-900 dark:text-gray-100">
@@ -522,15 +547,38 @@ ${customerBlock}
                 placeholder="رقم الموبايل (اختياري)" 
               />
             </div>
-            <div className="flex-1">
+            <div className="flex-1 relative">
               <input 
                 type="text" 
                 value={customerName} 
-                onChange={e => setCustomerName(e.target.value)} 
+                onChange={e => handleCustomerNameChange(e.target.value)} 
+                onFocus={() => customerName.length > 0 && setShowCustomerSuggestions(true)}
                 className="w-full bg-white/95 text-slate-800 placeholder-slate-400 border-0 py-2.5 px-3 rounded-lg focus:ring-2 focus:ring-white focus:outline-none transition font-medium shadow-inner text-sm" 
                 placeholder="اسم العميل..." 
               />
+              {showCustomerSuggestions && filteredCustomers.length > 0 && (
+                <div className="absolute bottom-full left-0 right-0 mb-2 bg-white dark:bg-slate-800 rounded-xl shadow-2xl border border-gray-100 dark:border-slate-700 overflow-hidden z-[110] animate-in slide-in-from-bottom-2 duration-200">
+                  <div className="p-2 border-b border-gray-50 dark:border-slate-700 text-[10px] font-bold text-gray-400 uppercase tracking-wider bg-gray-50/50 dark:bg-slate-900/50">نتائج البحث</div>
+                  {filteredCustomers.map(c => (
+                    <button
+                      key={c.id}
+                      onClick={() => selectCustomer(c)}
+                      className="w-full p-3 text-right hover:bg-indigo-50 dark:hover:bg-indigo-900/20 flex items-center justify-between group transition-colors border-b border-gray-50 last:border-0 dark:border-slate-700/50"
+                    >
+                      <div className="flex flex-col items-start text-left order-2">
+                        <span className="font-bold text-slate-800 dark:text-slate-100 text-sm">{c.name}</span>
+                        <span className="text-xs text-slate-500 dark:text-slate-400 font-mono">{c.phone}</span>
+                      </div>
+                      <User size={16} className="text-slate-400 group-hover:text-indigo-600 transition-colors order-1" />
+                    </button>
+                  ))}
+                </div>
+              )}
+              {showCustomerSuggestions && (
+                <div className="fixed inset-0 z-[105]" onClick={() => setShowCustomerSuggestions(false)} />
+              )}
             </div>
+
           </div>
           {customerDebt > 0 && (
             <div className="relative bg-black/20 border border-white/20 text-white px-3 py-2 rounded-lg text-xs font-bold flex items-center justify-between">
