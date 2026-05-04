@@ -14,6 +14,7 @@ export default function POS() {
   const [customerPhone, setCustomerPhone] = useState('');
   const [customerName, setCustomerName] = useState('');
   const [paidAmountStr, setPaidAmountStr] = useState('');
+  const [discountStr, setDiscountStr] = useState('');
   const [customerDebt, setCustomerDebt] = useState<number>(0);
   const [showCustomerSuggestions, setShowCustomerSuggestions] = useState(false);
 
@@ -99,6 +100,7 @@ export default function POS() {
   thead th:last-child{text-align:left;}
   .totals{margin-top:10px;border-top:2px dashed #333;padding-top:10px;}
   .total-row{display:flex;justify-content:space-between;font-size:13px;padding:3px 0;}
+  .discount-row{display:flex;justify-content:space-between;font-size:13px;padding:3px 0;color:#e53e3e;font-weight:700;}
   .grand-total{font-size:17px;font-weight:900;border-top:1px solid #ddd;margin-top:6px;padding-top:8px;}
   .footer{text-align:center;margin-top:16px;font-size:12px;color:#888;border-top:2px dashed #bbb;padding-top:10px;}
   @media print{@page{margin:10mm;size:A5;}}
@@ -130,6 +132,7 @@ ${customerBlock}
 </table>
 <div class="totals">
   <div class="total-row"><span>المجموع الفرعي:</span><span>${orderDetails.subtotal.toFixed(2)} ${currentSettings.currency}</span></div>
+  ${orderDetails.discount > 0 ? `<div class="discount-row"><span>🏷️ الخصم:</span><span>- ${orderDetails.discount.toFixed(2)} ${currentSettings.currency}</span></div>` : ''}
   <div class="total-row"><span>الضريبة (${currentSettings.taxRate}%):</span><span>${orderDetails.tax.toFixed(2)} ${currentSettings.currency}</span></div>
   <div class="total-row grand-total"><span>الإجمالي:</span><span>${orderDetails.total.toFixed(2)} ${currentSettings.currency}</span></div>
 </div>
@@ -145,6 +148,7 @@ ${customerBlock}
   const doCheckout = async (shouldPrint: boolean) => {
     const currentCart = [...cart];
     const currentSubtotal = subtotal;
+    const currentDiscount = discount;
     const currentTax = tax;
     const currentTotal = total;
     const currentCustomerName = customerName;
@@ -162,6 +166,7 @@ ${customerBlock}
     const details = {
       cart: currentCart,
       subtotal: currentSubtotal,
+      discount: currentDiscount,
       tax: currentTax,
       total: currentTotal,
       customerName: currentCustomerName,
@@ -180,6 +185,7 @@ ${customerBlock}
     setCustomerName('');
     setCustomerPhone('');
     setPaidAmountStr('');
+    setDiscountStr('');
     setCustomerDebt(0);
   };
 
@@ -190,8 +196,10 @@ ${customerBlock}
   );
 
   const subtotal = cart.reduce((sum, item) => sum + item.sale_price * item.quantity, 0);
-  const tax = subtotal * (storeSettings.taxRate / 100);
-  const total = subtotal + tax;
+  const discount = Math.min(parseFloat(discountStr) || 0, subtotal);
+  const discountedSubtotal = subtotal - discount;
+  const tax = discountedSubtotal * (storeSettings.taxRate / 100);
+  const total = discountedSubtotal + tax;
 
   const currentPaid = paidAmountStr === '' ? total : parseFloat(paidAmountStr) || 0;
   const remaining = total - currentPaid;
@@ -636,6 +644,26 @@ ${customerBlock}
                <span>المجموع الفرعي</span>
               <span>{subtotal.toFixed(2)} {storeSettings.currency}</span>
             </div>
+
+            {/* Discount Row */}
+            <div className="flex gap-3 items-center pb-1">
+              <label className="text-xs font-bold text-orange-500 whitespace-nowrap flex items-center gap-1">
+                🏷️ خصم
+              </label>
+              <input
+                type="number"
+                dir="ltr"
+                min="0"
+                value={discountStr}
+                onChange={(e) => setDiscountStr(e.target.value)}
+                placeholder="0.00"
+                className="flex-1 bg-white dark:bg-slate-800 border border-orange-200 dark:border-orange-700 py-1.5 px-3 rounded-lg focus:ring-2 focus:ring-orange-400 font-bold text-sm focus:outline-none transition text-left placeholder-gray-300"
+              />
+              {discount > 0 && (
+                <span className="text-orange-500 font-black text-sm whitespace-nowrap">- {discount.toFixed(2)}</span>
+              )}
+            </div>
+
             {storeSettings.taxRate > 0 && (
               <div className="flex justify-between text-gray-500 dark:text-gray-400 font-semibold text-sm pb-4 border-b border-gray-200 dark:border-slate-700">
                 <span>الضريبة ({storeSettings.taxRate}%)</span>
