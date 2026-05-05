@@ -81,6 +81,7 @@ interface CashierStore {
   addToCart: (product: Product) => void;
   removeFromCart: (productId: string) => void;
   updateQuantity: (productId: string, quantity: number) => void;
+  updatePrice: (productId: string, price: number) => void;
   clearCart: () => void;
 
   // Operations
@@ -270,6 +271,11 @@ export const useStore = create<CashierStore>((set, get) => ({
       const validQty = Math.max(1, Math.min(quantity, product.stock_quantity));
       return { cart: state.cart.map((i) => (i.id === productId ? { ...i, quantity: validQty } : i)) };
     }),
+
+  updatePrice: (productId, price) =>
+    set((state) => ({
+      cart: state.cart.map((i) => (i.id === productId ? { ...i, sale_price: price } : i))
+    })),
 
   clearCart: () => set({ cart: [] }),
 
