@@ -29,6 +29,7 @@ export default function Invoices() {
         `<tr>
           <td style="padding:6px 4px;border-bottom:1px dashed #ddd;font-size:13px;">${item.name}${item.returned_quantity > 0 ? ` <span style="color:red;font-size:10px;">(مرتجع: ${item.returned_quantity})</span>` : ''}</td>
           <td style="padding:6px 4px;border-bottom:1px dashed #ddd;text-align:center;font-size:13px;">${item.quantity}</td>
+          <td style="padding:6px 4px;border-bottom:1px dashed #ddd;text-align:center;font-size:13px;">${item.sale_price.toFixed(2)}</td>
           <td style="padding:6px 4px;border-bottom:1px dashed #ddd;text-align:left;font-size:13px;">${(item.sale_price * item.quantity).toFixed(2)}</td>
         </tr>`
       ).join('');
@@ -82,6 +83,7 @@ export default function Invoices() {
     <thead><tr>
       <th>${isPayment ? 'البيان' : 'المنتج'}</th>
       <th style="text-align:center">${isPayment ? '' : 'كمية'}</th>
+      <th style="text-align:center">${isPayment ? '' : 'سعر القطعة'}</th>
       <th style="text-align:left">إجمالي</th>
     </tr></thead>
     <tbody>${itemsHtml}</tbody>
@@ -96,8 +98,12 @@ export default function Invoices() {
       <div class="total-row"><span>المجموع الفرعي:</span><span>${subtotal.toFixed(2)} ${storeSettings.currency}</span></div>
       <div class="total-row"><span>الضريبة (${storeSettings.taxRate}%):</span><span>${taxValue.toFixed(2)} ${storeSettings.currency}</span></div>
       <div class="total-row grand-total"><span>الإجمالي:</span><span>${order.total.toFixed(2)} ${storeSettings.currency}</span></div>
+      ${order.paid_amount < order.total ? `
+        <div class="total-row" style="margin-top:4px;color:#059669;font-weight:bold;"><span>المبلغ المدفوع:</span><span>${order.paid_amount.toFixed(2)} ${storeSettings.currency}</span></div>
+        <div class="total-row" style="color:#dc2626;font-weight:900;font-size:14px;border-top:1px dashed #eee;margin-top:2px;padding-top:2px;"><span>المتبقي (آجل):</span><span>${(order.total - order.paid_amount).toFixed(2)} ${storeSettings.currency}</span></div>
+      ` : ''}
       ${order.items.some((i:any) => i.returned_quantity > 0) ? `
-        <div class="total-row" style="color:red;font-weight:bold;">
+        <div class="total-row" style="color:red;font-weight:bold;margin-top:5px;border-top:1px solid #eee;">
           <span>إجمالي المرتجع:</span>
           <span>-${order.items.reduce((sum:number, i:any) => sum + (i.returned_quantity * i.sale_price), 0).toFixed(2)} ${storeSettings.currency}</span>
         </div>

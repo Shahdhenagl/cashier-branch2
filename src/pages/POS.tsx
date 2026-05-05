@@ -72,6 +72,7 @@ export default function POS() {
       `<tr>
         <td style="padding:6px 4px;border-bottom:1px dashed #ddd;font-size:13px;">${item.name}</td>
         <td style="padding:6px 4px;border-bottom:1px dashed #ddd;text-align:center;font-size:13px;">${item.quantity}</td>
+        <td style="padding:6px 4px;border-bottom:1px dashed #ddd;text-align:center;font-size:13px;">${item.sale_price.toFixed(2)}</td>
         <td style="padding:6px 4px;border-bottom:1px dashed #ddd;text-align:left;font-size:13px;">${(item.sale_price * item.quantity).toFixed(2)}</td>
       </tr>`
     ).join('');
@@ -126,6 +127,7 @@ ${customerBlock}
   <thead><tr>
     <th>المنتج</th>
     <th style="text-align:center">كمية</th>
+    <th style="text-align:center">سعر القطعة</th>
     <th style="text-align:left">إجمالي</th>
   </tr></thead>
   <tbody>${itemsHtml}</tbody>
@@ -135,6 +137,10 @@ ${customerBlock}
   ${orderDetails.discount > 0 ? `<div class="discount-row"><span>🏷️ الخصم:</span><span>- ${orderDetails.discount.toFixed(2)} ${currentSettings.currency}</span></div>` : ''}
   <div class="total-row"><span>الضريبة (${currentSettings.taxRate}%):</span><span>${orderDetails.tax.toFixed(2)} ${currentSettings.currency}</span></div>
   <div class="total-row grand-total"><span>الإجمالي:</span><span>${orderDetails.total.toFixed(2)} ${currentSettings.currency}</span></div>
+  ${orderDetails.paidAmount < orderDetails.total ? `
+    <div class="total-row" style="margin-top:4px;color:#059669;font-weight:bold;"><span>المبلغ المدفوع:</span><span>${orderDetails.paidAmount.toFixed(2)} ${currentSettings.currency}</span></div>
+    <div class="total-row" style="color:#dc2626;font-weight:900;font-size:14px;border-top:1px dashed #eee;margin-top:2px;padding-top:2px;"><span>المتبقي (آجل):</span><span>${(orderDetails.total - orderDetails.paidAmount).toFixed(2)} ${currentSettings.currency}</span></div>
+  ` : ''}
 </div>
 <div class="footer">شكراً لتعاملكم ♥</div>
 <script>window.onload=()=>{window.print();window.onafterprint=()=>window.close();}<\/script>
@@ -169,6 +175,7 @@ ${customerBlock}
       discount: currentDiscount,
       tax: currentTax,
       total: currentTotal,
+      paidAmount: finalPaidAmount,
       customerName: currentCustomerName,
       customerPhone: currentCustomerPhone
     };
