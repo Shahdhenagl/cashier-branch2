@@ -45,7 +45,7 @@ export default function Invoices() {
   <title>${isPayment ? 'وصل سداد' : 'فاتورة'} #${order.id}</title>
   <style>
     *{margin:0;padding:0;box-sizing:border-box;}
-    body{font-family:'Segoe UI',Arial,sans-serif;background:#fff;color:#111;width:320px;margin:0 auto;padding:16px;}
+    body{font-family:'Segoe UI',Arial,sans-serif;background:#fff;color:#111;width:148mm;margin:0 auto;padding:20px;}
     .header{text-align:center;border-bottom:2px dashed #333;padding-bottom:12px;margin-bottom:12px;}
     .logo{width:64px;height:64px;object-fit:cover;border-radius:12px;margin-bottom:6px;}
     .store-name{font-size:18px;font-weight:900;margin-bottom:4px;}
@@ -59,7 +59,7 @@ export default function Invoices() {
     .total-row{display:flex;justify-content:space-between;font-size:13px;padding:3px 0;}
     .grand-total{font-size:17px;font-weight:900;border-top:1px solid #ddd;margin-top:6px;padding-top:8px;}
     .footer{text-align:center;margin-top:16px;font-size:12px;color:#888;border-top:2px dashed #bbb;padding-top:10px;}
-    @media print{@page{margin:4mm;size:80mm auto;}}
+    @media print{@page{margin:10mm;size:A5;}}
   </style>
 </head>
 <body>
@@ -108,7 +108,7 @@ export default function Invoices() {
   <script>window.onload=()=>{window.print();window.onafterprint=()=>window.close();}<\/script>
 </body></html>`;
 
-    const pw = window.open('', '_blank', 'width=400,height=600');
+    const pw = window.open('', '_blank', 'width=600,height=850');
     if (pw) { pw.document.write(html); pw.document.close(); }
   };
 
