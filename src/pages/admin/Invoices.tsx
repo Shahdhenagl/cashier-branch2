@@ -18,6 +18,27 @@ export default function Invoices() {
     const subtotal = order.items.reduce((sum: number, item: any) => sum + (item.sale_price * item.quantity), 0);
     const taxValue = order.total - subtotal;
     
+    // Calculate debt history for this customer if it's a payment receipt
+    let debtInfo = { before: 0, after: 0 };
+    if (isPayment && order.customer) {
+      const customerOrders = orders.filter(o => o.customer?.id === order.customer.id);
+      // Sort by date to calculate historical balance correctly
+      const sortedOrders = [...customerOrders].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+      const currentIndex = sortedOrders.findIndex(o => o.id === order.id);
+      
+      // Debt BEFORE this payment = sum of (total - paid) for all orders BEFORE this one
+      const balanceBefore = sortedOrders.slice(0, currentIndex).reduce((sum, o) => {
+        const returnedValue = o.items.reduce((s, i) => s + (i.returned_quantity * i.sale_price), 0);
+        const effectiveTotal = o.type === 'payment' ? 0 : (o.total - returnedValue);
+        return sum + (effectiveTotal - o.paid_amount);
+      }, 0);
+      
+      debtInfo = {
+        before: balanceBefore,
+        after: balanceBefore - order.paid_amount
+      };
+    }
+
     let itemsHtml = '';
     if (isPayment) {
       itemsHtml = `<tr>
@@ -59,6 +80,7 @@ export default function Invoices() {
     .totals{margin-top:10px;border-top:2px dashed #333;padding-top:10px;}
     .total-row{display:flex;justify-content:space-between;font-size:13px;padding:3px 0;}
     .grand-total{font-size:17px;font-weight:900;border-top:1px solid #ddd;margin-top:6px;padding-top:8px;}
+    .debt-row{display:flex;justify-content:space-between;font-size:12px;padding:4px 8px;background:#f9fafb;border-radius:6px;margin-top:4px;border:1px solid #eee;}
     .footer{text-align:center;margin-top:16px;font-size:12px;color:#888;border-top:2px dashed #bbb;padding-top:10px;}
     @media print{@page{margin:10mm;size:A5;}}
   </style>
@@ -90,9 +112,17 @@ export default function Invoices() {
   </table>
   <div class="totals">
     ${isPayment ? `
-      <div class="total-row grand-total">
+      <div class="total-row grand-total" style="border-bottom:1px solid #eee; padding-bottom:8px; margin-bottom:8px;">
         <span>إجمالي المبلغ المسدد:</span>
         <span>${order.paid_amount.toFixed(2)} ${storeSettings.currency}</span>
+      </div>
+      <div class="debt-row">
+        <span>المديونية قبل السداد:</span>
+        <span style="font-weight:bold;">${debtInfo.before.toFixed(2)} ${storeSettings.currency}</span>
+      </div>
+      <div class="debt-row" style="background:#fff7ed; border-color:#fed7aa;">
+        <span>المديونية المتبقية بعد السداد:</span>
+        <span style="font-weight:900; color:#c2410c;">${Math.max(0, debtInfo.after).toFixed(2)} ${storeSettings.currency}</span>
       </div>
     ` : `
       <div class="total-row"><span>المجموع الفرعي:</span><span>${subtotal.toFixed(2)} ${storeSettings.currency}</span></div>
