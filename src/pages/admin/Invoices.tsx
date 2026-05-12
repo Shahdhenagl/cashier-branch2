@@ -18,25 +18,20 @@ export default function Invoices() {
     const subtotal = order.items.reduce((sum: number, item: any) => sum + (item.sale_price * item.quantity), 0);
     const taxValue = order.total - subtotal;
     
-    // Calculate debt history for this customer if it's a payment receipt
-    let debtInfo = { before: 0, after: 0 };
-    if (isPayment && order.customer) {
+    // Calculate TOTAL debt for this customer up to this invoice
+    let totalCustomerDebt = 0;
+    if (order.customer) {
       const customerOrders = orders.filter(o => o.customer?.id === order.customer.id);
       // Sort by date to calculate historical balance correctly
       const sortedOrders = [...customerOrders].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
       const currentIndex = sortedOrders.findIndex(o => o.id === order.id);
       
-      // Debt BEFORE this payment = sum of (total - paid) for all orders BEFORE this one
-      const balanceBefore = sortedOrders.slice(0, currentIndex).reduce((sum, o) => {
+      // All orders up to and including this one
+      totalCustomerDebt = sortedOrders.slice(0, currentIndex + 1).reduce((sum, o) => {
         const returnedValue = o.items.reduce((s, i) => s + (i.returned_quantity * i.sale_price), 0);
         const effectiveTotal = o.type === 'payment' ? 0 : (o.total - returnedValue);
         return sum + (effectiveTotal - o.paid_amount);
       }, 0);
-      
-      debtInfo = {
-        before: balanceBefore,
-        after: balanceBefore - order.paid_amount
-      };
     }
 
     let itemsHtml = '';
@@ -116,13 +111,9 @@ export default function Invoices() {
         <span>إجمالي المبلغ المسدد:</span>
         <span>${order.paid_amount.toFixed(2)} ${storeSettings.currency}</span>
       </div>
-      <div class="debt-row">
-        <span>المديونية قبل السداد:</span>
-        <span style="font-weight:bold;">${debtInfo.before.toFixed(2)} ${storeSettings.currency}</span>
-      </div>
       <div class="debt-row" style="background:#fff7ed; border-color:#fed7aa;">
-        <span>المديونية المتبقية بعد السداد:</span>
-        <span style="font-weight:900; color:#c2410c;">${Math.max(0, debtInfo.after).toFixed(2)} ${storeSettings.currency}</span>
+        <span>إجمالي مديونية العميل حالياً:</span>
+        <span style="font-weight:900; color:#c2410c;">${Math.max(0, totalCustomerDebt).toFixed(2)} ${storeSettings.currency}</span>
       </div>
     ` : `
       <div class="total-row"><span>المجموع الفرعي:</span><span>${subtotal.toFixed(2)} ${storeSettings.currency}</span></div>
@@ -131,6 +122,12 @@ export default function Invoices() {
       ${order.paid_amount < order.total ? `
         <div class="total-row" style="margin-top:4px;color:#059669;font-weight:bold;"><span>المبلغ المدفوع:</span><span>${order.paid_amount.toFixed(2)} ${storeSettings.currency}</span></div>
         <div class="total-row" style="color:#dc2626;font-weight:900;font-size:14px;border-top:1px dashed #eee;margin-top:2px;padding-top:2px;"><span>المتبقي (آجل):</span><span>${(order.total - order.paid_amount).toFixed(2)} ${storeSettings.currency}</span></div>
+      ` : ''}
+      ${order.customer ? `
+        <div class="debt-row" style="background:#fef2f2; border-color:#fee2e2; margin-top:8px;">
+          <span style="color:#991b1b; font-weight:bold;">إجمالي المديونية (بعد هذه الفاتورة):</span>
+          <span style="font-weight:900; color:#b91c1c;">${Math.max(0, totalCustomerDebt).toFixed(2)} ${storeSettings.currency}</span>
+        </div>
       ` : ''}
       ${order.items.some((i:any) => i.returned_quantity > 0) ? `
         <div class="total-row" style="color:red;font-weight:bold;margin-top:5px;border-top:1px solid #eee;">
@@ -328,6 +325,17 @@ export default function Invoices() {
                           <div className="flex flex-col">
                             <span className="font-bold flex items-center gap-1"><User size={14} style={{ color: storeSettings.themeColor }} /> {order.customer.name}</span>
                             <span className="text-xs text-slate-500 font-mono mt-1" dir="ltr">{order.customer.phone}</span>
+                            {(() => {
+                              const cDebt = orders.filter(o => o.customer?.id === order.customer.id)
+                                .reduce((sum, o) => {
+                                  const rVal = o.items.reduce((s, i) => s + (i.returned_quantity * i.sale_price), 0);
+                                  const eTotal = o.type === 'payment' ? 0 : (o.total - rVal);
+                                  return sum + (eTotal - o.paid_amount);
+                                }, 0);
+                              return cDebt > 0 ? (
+                                <span className="text-[10px] font-black text-red-500 mt-1 bg-red-50 px-2 py-0.5 rounded border border-red-100 w-fit">إجمالي الأجل: {cDebt.toFixed(2)}</span>
+                              ) : null;
+                            })()}
                           </div>
                         ) : (
                           <span className="text-slate-400 text-xs font-bold bg-slate-100 px-2 py-1 rounded">عميل نقدي</span>

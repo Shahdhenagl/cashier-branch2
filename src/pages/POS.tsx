@@ -81,6 +81,19 @@ export default function POS() {
       ? `<div class="customer-box"><strong>العميل:</strong> ${orderDetails.customerName || '—'} &nbsp;|&nbsp; <strong>هاتف:</strong> <span dir="ltr">${orderDetails.customerPhone || '—'}</span></div>`
       : '';
 
+    // Calculate TOTAL debt for this customer up to this invoice
+    let totalCustomerDebt = 0;
+    if (orderDetails.customerPhone) {
+      const existingCust = customers.find(c => c.phone === orderDetails.customerPhone);
+      if (existingCust) {
+        const cOrders = orders.filter(o => o.customer?.id === existingCust.id);
+        // Include historical debt + current invoice debt
+        const historicalDebt = cOrders.reduce((sum, o) => sum + (o.total - o.paid_amount), 0);
+        const currentInvoiceDebt = orderDetails.total - orderDetails.paidAmount;
+        totalCustomerDebt = historicalDebt + currentInvoiceDebt;
+      }
+    }
+
     const html = `<!DOCTYPE html>
 <html dir="rtl" lang="ar">
 <head>
@@ -103,6 +116,7 @@ export default function POS() {
   .total-row{display:flex;justify-content:space-between;font-size:13px;padding:3px 0;}
   .discount-row{display:flex;justify-content:space-between;font-size:13px;padding:3px 0;color:#e53e3e;font-weight:700;}
   .grand-total{font-size:17px;font-weight:900;border-top:1px solid #ddd;margin-top:6px;padding-top:8px;}
+  .debt-row{display:flex;justify-content:space-between;font-size:12px;padding:4px 8px;background:#f9fafb;border-radius:6px;margin-top:4px;border:1px solid #eee;}
   .footer{text-align:center;margin-top:16px;font-size:12px;color:#888;border-top:2px dashed #bbb;padding-top:10px;}
   @media print{@page{margin:10mm;size:A5;}}
 
@@ -140,6 +154,12 @@ ${customerBlock}
   ${orderDetails.paidAmount < orderDetails.total ? `
     <div class="total-row" style="margin-top:4px;color:#059669;font-weight:bold;"><span>المبلغ المدفوع:</span><span>${orderDetails.paidAmount.toFixed(2)} ${currentSettings.currency}</span></div>
     <div class="total-row" style="color:#dc2626;font-weight:900;font-size:14px;border-top:1px dashed #eee;margin-top:2px;padding-top:2px;"><span>المتبقي (آجل):</span><span>${(orderDetails.total - orderDetails.paidAmount).toFixed(2)} ${currentSettings.currency}</span></div>
+  ` : ''}
+  ${totalCustomerDebt > 0 ? `
+    <div class="debt-row" style="background:#fef2f2; border-color:#fee2e2; margin-top:8px;">
+      <span style="color:#991b1b; font-weight:bold;">إجمالي المديونية الحالية:</span>
+      <span style="font-weight:900; color:#b91c1c;">${totalCustomerDebt.toFixed(2)} ${currentSettings.currency}</span>
+    </div>
   ` : ''}
 </div>
 <div class="footer">شكراً لتعاملكم ♥</div>
