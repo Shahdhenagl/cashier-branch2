@@ -28,8 +28,7 @@ export default function Invoices() {
       
       // All orders up to and including this one
       totalCustomerDebt = sortedOrders.slice(0, currentIndex + 1).reduce((sum, o) => {
-        const returnedValue = o.items.reduce((s, i) => s + (i.returned_quantity * i.sale_price), 0);
-        const effectiveTotal = o.type === 'payment' ? 0 : (o.total - returnedValue);
+        const effectiveTotal = o.type === 'payment' ? 0 : o.total;
         return sum + (effectiveTotal - o.paid_amount);
       }, 0);
     }
@@ -167,7 +166,7 @@ export default function Invoices() {
           o.total,
           returnedValue,
           o.paid_amount,
-          o.type === 'payment' ? 0 : Math.max(0, (o.total - returnedValue) - o.paid_amount),
+          o.type === 'payment' ? 0 : Math.max(0, o.total - o.paid_amount),
           o.type === 'payment' ? 'سداد' : 'بيع'
         ];
       })
@@ -315,7 +314,7 @@ export default function Invoices() {
                 filteredOrders.map((order) => {
                   const hasReturns = order.items.some(i => i.returned_quantity > 0);
                   const returnedValue = order.items.reduce((sum, i) => sum + (i.returned_quantity * i.sale_price), 0);
-                  const effectiveDebt = order.type === 'payment' ? 0 : Math.max(0, (order.total - returnedValue) - order.paid_amount);
+                  const effectiveDebt = order.type === 'payment' ? 0 : Math.max(0, order.total - order.paid_amount);
 
                   return (
                     <tr key={order.id} className={`hover:bg-slate-50 transition ${hasReturns ? 'bg-red-50/20' : ''}`}>
@@ -328,8 +327,7 @@ export default function Invoices() {
                             {(() => {
                               const cDebt = orders.filter(o => o.customer?.id === order.customer!.id)
                                 .reduce((sum, o) => {
-                                  const rVal = o.items.reduce((s, i) => s + (i.returned_quantity * i.sale_price), 0);
-                                  const eTotal = o.type === 'payment' ? 0 : (o.total - rVal);
+                                  const eTotal = o.type === 'payment' ? 0 : o.total;
                                   return sum + (eTotal - o.paid_amount);
                                 }, 0);
                               return cDebt > 0 ? (
