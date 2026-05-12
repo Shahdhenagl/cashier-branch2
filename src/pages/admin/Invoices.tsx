@@ -326,7 +326,7 @@ export default function Invoices() {
                             <span className="font-bold flex items-center gap-1"><User size={14} style={{ color: storeSettings.themeColor }} /> {order.customer.name}</span>
                             <span className="text-xs text-slate-500 font-mono mt-1" dir="ltr">{order.customer.phone}</span>
                             {(() => {
-                              const cDebt = orders.filter(o => o.customer?.id === order.customer.id)
+                              const cDebt = orders.filter(o => o.customer?.id === order.customer!.id)
                                 .reduce((sum, o) => {
                                   const rVal = o.items.reduce((s, i) => s + (i.returned_quantity * i.sale_price), 0);
                                   const eTotal = o.type === 'payment' ? 0 : (o.total - rVal);
