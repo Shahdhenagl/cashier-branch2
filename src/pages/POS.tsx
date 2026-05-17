@@ -5,7 +5,7 @@ import { normalizeArabic } from '../utils/textUtils';
 
 
 export default function POS() {
-  const { products, categories, cart, addToCart, removeFromCart, updateQuantity, updatePrice, clearCart, checkout, processReturn, storeSettings, orders, activeInvoiceId, customers, isOnline, offlineQueue, isSyncing, syncOfflineQueue } = useStore();
+  const { products, categories, cart, addToCart, removeFromCart, updateQuantity, updatePrice, clearCart, checkout, processReturn, storeSettings, orders, activeInvoiceId, customers, isOnline, offlineQueue, offlineReturnsQueue, isSyncing, syncOfflineQueue, syncOfflineReturnsQueue } = useStore();
   
   const [activeCategory, setActiveCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -45,6 +45,7 @@ export default function POS() {
     const handleOnline = () => {
       useStore.setState({ isOnline: true });
       syncOfflineQueue();
+      syncOfflineReturnsQueue();
     };
     const handleOffline = () => {
       useStore.setState({ isOnline: false });
@@ -57,6 +58,7 @@ export default function POS() {
     useStore.setState({ isOnline: navigator.onLine });
     if (navigator.onLine) {
       syncOfflineQueue();
+      syncOfflineReturnsQueue();
     }
 
     return () => {
@@ -625,18 +627,18 @@ ${customerBlock}
                 {/* Offline Status Badge */}
                 {!isOnline ? (
                   <span className="bg-red-500 text-white text-[10px] font-extrabold px-2 py-0.5 rounded-full flex items-center gap-1 animate-pulse shadow-sm">
-                    🔴 أوفلاين ({offlineQueue.length} محلياً)
+                    🔴 أوفلاين ({offlineQueue.length + offlineReturnsQueue.length} محلياً)
                   </span>
                 ) : isSyncing ? (
                   <span className="bg-amber-500 text-white text-[10px] font-extrabold px-2 py-0.5 rounded-full flex items-center gap-1 shadow-sm">
                     ⏳ جاري الرفع...
                   </span>
-                ) : offlineQueue.length > 0 ? (
+                ) : (offlineQueue.length > 0 || offlineReturnsQueue.length > 0) ? (
                   <button 
-                    onClick={() => syncOfflineQueue()}
+                    onClick={() => { syncOfflineQueue(); syncOfflineReturnsQueue(); }}
                     className="bg-indigo-600 text-white hover:bg-indigo-700 text-[10px] font-extrabold px-2.5 py-0.5 rounded-full flex items-center gap-1 transition shadow-sm"
                   >
-                    🔁 مزامنة ({offlineQueue.length} فواتير)
+                    🔁 مزامنة ({offlineQueue.length + offlineReturnsQueue.length} معاملات)
                   </button>
                 ) : (
                   <span className="bg-emerald-500 text-white text-[10px] font-extrabold px-2 py-0.5 rounded-full flex items-center gap-1 shadow-sm">
