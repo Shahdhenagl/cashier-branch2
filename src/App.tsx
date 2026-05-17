@@ -73,7 +73,7 @@ function ThemeInjector() {
 
 
 function App() {
-  const { loadAll, loadSettingsOnly, isLoading, dbError } = useStore();
+  const { loadAll, loadSettingsOnly, loadProductsOnly, isLoading, dbError } = useStore();
 
   useEffect(() => {
     loadAll();
@@ -82,6 +82,8 @@ function App() {
     channel.onmessage = (event) => {
       if (event.data === 'sync_settings') {
         loadSettingsOnly();
+      } else if (event.data === 'sync_products') {
+        loadProductsOnly();
       }
     };
     return () => channel.close();

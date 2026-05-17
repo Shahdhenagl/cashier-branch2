@@ -120,6 +120,7 @@ interface CashierStore {
   // Data loading
   loadAll: () => Promise<void>;
   loadSettingsOnly: () => Promise<void>;
+  loadProductsOnly: () => Promise<void>;
 
   // Cart
   addToCart: (product: Product) => void;
@@ -330,6 +331,8 @@ export const useStore = create<CashierStore>((set, get) => ({
       bc.onmessage = (msg) => {
         if (msg.data === 'sync_settings') {
           get().loadSettingsOnly();
+        } else if (msg.data === 'sync_products') {
+          get().loadProductsOnly();
         }
       };
     } catch (err) {
@@ -342,6 +345,21 @@ export const useStore = create<CashierStore>((set, get) => ({
       const { data } = await supabase.from('store_settings').select('*').limit(1).maybeSingle();
       if (data) {
         set({ storeSettings: mapSettings(data as Record<string, unknown>) });
+      }
+    } catch(e) { console.error(e); }
+  },
+
+  loadProductsOnly: async () => {
+    try {
+      const [productsRes, categoriesRes] = await Promise.all([
+        supabase.from('products').select('*').order('name'),
+        supabase.from('categories').select('*').order('name'),
+      ]);
+      if (productsRes.data && categoriesRes.data) {
+        set({ 
+          products: productsRes.data as unknown as Product[],
+          categories: categoriesRes.data as Category[]
+        });
       }
     } catch(e) { console.error(e); }
   },
@@ -498,6 +516,8 @@ export const useStore = create<CashierStore>((set, get) => ({
       activeInvoiceId: nextCounter.toString(),
     });
 
+    new BroadcastChannel('cashier-sync').postMessage('sync_products');
+
     return invoiceId;
   },
 
@@ -552,6 +572,7 @@ export const useStore = create<CashierStore>((set, get) => ({
     );
 
     set({ orders: updatedOrders, products: updatedProducts });
+    new BroadcastChannel('cashier-sync').postMessage('sync_products');
     return true;
   },
 
@@ -639,17 +660,22 @@ export const useStore = create<CashierStore>((set, get) => ({
 
   addProduct: async (product) => {
     const { data } = await supabase.from('products').insert(product).select().single();
-    if (data) set((state) => ({ products: [data as unknown as Product, ...state.products] }));
+    if (data) {
+      set((state) => ({ products: [data as unknown as Product, ...state.products] }));
+      new BroadcastChannel('cashier-sync').postMessage('sync_products');
+    }
   },
 
   updateProduct: async (id, updated) => {
     await supabase.from('products').update(updated).eq('id', id);
     set((state) => ({ products: state.products.map((p) => (p.id === id ? { ...p, ...updated } : p)) }));
+    new BroadcastChannel('cashier-sync').postMessage('sync_products');
   },
 
   deleteProduct: async (id) => {
     await supabase.from('products').delete().eq('id', id);
     set((state) => ({ products: state.products.filter((p) => p.id !== id) }));
+    new BroadcastChannel('cashier-sync').postMessage('sync_products');
   },
 
   // ── Expenses ──────────────────────────────────────────────
