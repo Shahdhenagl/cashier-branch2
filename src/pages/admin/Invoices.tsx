@@ -142,10 +142,20 @@ export default function Invoices() {
       <div class="total-row"><span>المجموع الفرعي:</span><span>${subtotal.toFixed(2)} ${storeSettings.currency}</span></div>
       <div class="total-row"><span>الضريبة (${storeSettings.taxRate}%):</span><span>${taxValue.toFixed(2)} ${storeSettings.currency}</span></div>
       <div class="total-row grand-total"><span>الإجمالي:</span><span>${order.total.toFixed(2)} ${storeSettings.currency}</span></div>
-      ${order.paid_amount < order.total ? `
-        <div class="total-row" style="margin-top:4px;color:#059669;font-weight:bold;"><span>المبلغ المدفوع:</span><span>${order.paid_amount.toFixed(2)} ${storeSettings.currency}</span></div>
-        <div class="total-row" style="color:#dc2626;font-weight:900;font-size:14px;border-top:1px dashed #eee;margin-top:2px;padding-top:2px;"><span>المتبقي (آجل):</span><span>${(order.total - order.paid_amount).toFixed(2)} ${storeSettings.currency}</span></div>
+      <div class="total-row" style="margin-top:4px;color:#059669;font-weight:bold;">
+        <span>المبلغ المدفوع:</span>
+        <span>${order.paid_amount.toFixed(2)} ${storeSettings.currency}</span>
+      </div>
+      ${order.paid_amount > order.total ? `
+        <div class="total-row" style="color:#0284c7;font-weight:bold;">
+          <span>الباقي (كاش):</span>
+          <span>${(order.paid_amount - order.total).toFixed(2)} ${storeSettings.currency}</span>
+        </div>
       ` : ''}
+      <div class="total-row" style="color:#dc2626;font-weight:900;font-size:14px;border-top:1px dashed #eee;margin-top:2px;padding-top:2px;">
+        <span>المتبقي (آجل):</span>
+        <span>${Math.max(0, order.total - order.paid_amount).toFixed(2)} ${storeSettings.currency}</span>
+      </div>
       ${hasDebt ? `
         <div class="debt-row" style="background:#fef2f2; border-color:#fee2e2; margin-top:8px; display:flex; flex-direction:column; gap:4px; padding:8px 12px; width:100%;">
           <div style="display:flex; justify-content:space-between; font-size:12px; color:#555; width:100%;">

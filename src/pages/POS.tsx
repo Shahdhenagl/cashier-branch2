@@ -93,7 +93,7 @@ export default function POS() {
           const effectiveTotal = o.type === 'payment' ? 0 : o.total;
           return sum + (effectiveTotal - o.paid_amount);
         }, 0);
-        const currentInvoiceDebt = orderDetails.total - orderDetails.paidAmount;
+        const currentInvoiceDebt = Math.max(0, orderDetails.total - orderDetails.paidAmount);
         debtAfterInvoice = debtBeforeInvoice + currentInvoiceDebt;
         if (debtBeforeInvoice > 0 || debtAfterInvoice > 0) {
           hasDebt = true;
@@ -158,10 +158,20 @@ ${customerBlock}
   ${orderDetails.discount > 0 ? `<div class="discount-row"><span>🏷️ الخصم:</span><span>- ${orderDetails.discount.toFixed(2)} ${currentSettings.currency}</span></div>` : ''}
   <div class="total-row"><span>الضريبة (${currentSettings.taxRate}%):</span><span>${orderDetails.tax.toFixed(2)} ${currentSettings.currency}</span></div>
   <div class="total-row grand-total"><span>الإجمالي:</span><span>${orderDetails.total.toFixed(2)} ${currentSettings.currency}</span></div>
-  ${orderDetails.paidAmount < orderDetails.total ? `
-    <div class="total-row" style="margin-top:4px;color:#059669;font-weight:bold;"><span>المبلغ المدفوع:</span><span>${orderDetails.paidAmount.toFixed(2)} ${currentSettings.currency}</span></div>
-    <div class="total-row" style="color:#dc2626;font-weight:900;font-size:14px;border-top:1px dashed #eee;margin-top:2px;padding-top:2px;"><span>المتبقي (آجل):</span><span>${(orderDetails.total - orderDetails.paidAmount).toFixed(2)} ${currentSettings.currency}</span></div>
+  <div class="total-row" style="margin-top:4px;color:#059669;font-weight:bold;">
+    <span>المبلغ المدفوع:</span>
+    <span>${orderDetails.paidAmount.toFixed(2)} ${currentSettings.currency}</span>
+  </div>
+  ${orderDetails.paidAmount > orderDetails.total ? `
+    <div class="total-row" style="color:#0284c7;font-weight:bold;">
+      <span>الباقي (كاش):</span>
+      <span>${(orderDetails.paidAmount - orderDetails.total).toFixed(2)} ${currentSettings.currency}</span>
+    </div>
   ` : ''}
+  <div class="total-row" style="color:#dc2626;font-weight:900;font-size:14px;border-top:1px dashed #eee;margin-top:2px;padding-top:2px;">
+    <span>المتبقي (آجل):</span>
+    <span>${Math.max(0, orderDetails.total - orderDetails.paidAmount).toFixed(2)} ${currentSettings.currency}</span>
+  </div>
   ${hasDebt ? `
     <div class="debt-row" style="background:#fef2f2; border-color:#fee2e2; margin-top:8px; display:flex; flex-direction:column; gap:4px; padding:8px 12px; width:100%;">
       <div style="display:flex; justify-content:space-between; font-size:12px; color:#555; width:100%;">
