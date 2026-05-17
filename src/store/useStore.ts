@@ -34,16 +34,57 @@ export interface Order {
   items: OrderItem[];
   total: number;
   paid_amount: number;
+  paid_cash: number;
+  paid_visa: number;
+  paid_wallet: number;
+  paid_instapay: number;
   type: 'sale' | 'payment' | 'previous_debt';
   date: string;
+  payment_method: 'cash' | 'visa' | 'wallet' | 'instapay';
   customer?: Customer;
+  cashier_name?: string;
+}
+
+export interface Supplier {
+  id: string;
+  name: string;
+  phone: string;
+  address: string;
+  created_at: string;
+}
+
+export interface PurchaseItem {
+  id?: string;
+  product_id: string;
+  quantity: number;
+  purchase_price: number;
+}
+
+export interface PurchaseInvoice {
+  id: string;
+  invoice_number: string;
+  supplier_id: string;
+  total: number;
+  paid_amount: number;
+  paid_cash: number;
+  paid_visa: number;
+  paid_wallet: number;
+  paid_instapay: number;
+  payment_method: 'cash' | 'visa' | 'wallet' | 'instapay';
+  created_at: string;
+  items?: PurchaseItem[];
 }
 
 export interface Expense {
   id: string;
   category: string;
   amount: number;
+  paid_cash: number;
+  paid_visa: number;
+  paid_wallet: number;
+  paid_instapay: number;
   note: string;
+  payment_method: 'cash' | 'visa' | 'wallet' | 'instapay';
   date: string;
 }
 
@@ -57,6 +98,7 @@ export interface StoreSettings {
   phone: string;
   phone2: string;
   whatsappCountryCode: string;
+  initial_balance: number;
 }
 
 // ─── Store Interface ──────────────────────────────────────────
@@ -65,9 +107,11 @@ interface CashierStore {
   products: Product[];
   categories: Category[];
   customers: Customer[];
+  suppliers: Supplier[];
   cart: OrderItem[];
   orders: Order[];
   expenses: Expense[];
+  purchaseInvoices: PurchaseInvoice[];
   invoiceCounter: number;
   activeInvoiceId: string;
   isLoading: boolean;
@@ -99,6 +143,19 @@ interface CashierStore {
   addExpense: (expense: Omit<Expense, 'id' | 'date'>) => Promise<void>;
   updateExpense: (id: string, expense: Partial<Expense>) => Promise<void>;
   deleteExpense: (id: string) => Promise<void>;
+
+  // Suppliers
+  addSupplier: (supplier: Omit<Supplier, 'id' | 'created_at'>) => Promise<void>;
+  updateSupplier: (id: string, supplier: Partial<Supplier>) => Promise<void>;
+  deleteSupplier: (id: string) => Promise<void>;
+
+  // Purchases
+  loadPurchaseInvoices: () => Promise<void>;
+  addPurchaseInvoice: (
+    invoice: Omit<PurchaseInvoice, 'id' | 'created_at' | 'items' | 'paid_cash' | 'paid_visa' | 'paid_wallet' | 'paid_instapay'>, 
+    items: PurchaseItem[],
+    splitPayments?: { cash: number; visa: number; wallet: number; instapay: number }
+  ) => Promise<void>;
 }
 
 // ─── Helpers ─────────────────────────────────────────────────
@@ -113,6 +170,7 @@ function mapSettings(row: Record<string, unknown>): StoreSettings {
     phone: (row.phone as string) ?? '',
     phone2: (row.phone2 as string) ?? '',
     whatsappCountryCode: (row.whatsapp_country_code as string) ?? '2',
+    initial_balance: (row.initial_balance as number) ?? 0,
   };
 }
 
@@ -128,13 +186,16 @@ export const useStore = create<CashierStore>((set, get) => ({
     phone: '',
     phone2: '',
     whatsappCountryCode: '2',
+    initial_balance: 0,
   },
   products: [],
   categories: [],
   customers: [],
+  suppliers: [],
   cart: [],
   orders: [],
   expenses: [],
+  purchaseInvoices: [],
   invoiceCounter: 1,
   activeInvoiceId: '1',
   isLoading: false,
@@ -184,16 +245,24 @@ export const useStore = create<CashierStore>((set, get) => ({
             returned_quantity: (i.returned_quantity as number) ?? 0,
           };
         });
+        const paid_amt = (o.paid_amount as number) ?? (o.total as number);
+        const p_method = (o.payment_method as any) ?? 'cash';
         return {
           id: o.id as string,
           total: o.total as number,
-          paid_amount: (o.paid_amount as number) ?? (o.total as number),
+          paid_amount: paid_amt,
+          paid_cash: (o.paid_cash as number) ?? (p_method === 'cash' ? paid_amt : 0),
+          paid_visa: (o.paid_visa as number) ?? (p_method === 'visa' ? paid_amt : 0),
+          paid_wallet: (o.paid_wallet as number) ?? (p_method === 'wallet' ? paid_amt : 0),
+          paid_instapay: (o.paid_instapay as number) ?? (p_method === 'instapay' ? paid_amt : 0),
           type: (o.type as string) as 'sale' | 'payment' | 'previous_debt' ?? 'sale',
           date: o.created_at as string,
-          items,
+          payment_method: p_method,
           customer: custRow
             ? { id: custRow.id as string, name: custRow.name as string, phone: custRow.phone as string, timestamp: custRow.created_at as string }
             : undefined,
+          cashier_name: o.cashier_name as string,
+          items,
         };
       });
 
@@ -205,7 +274,9 @@ export const useStore = create<CashierStore>((set, get) => ({
         products: (productsRes.data ?? []) as unknown as Product[],
         customers,
         orders,
-        expenses: [], // Default to empty
+        suppliers: [],
+        expenses: [],
+        purchaseInvoices: [],
         invoiceCounter: counter,
         activeInvoiceId: counter.toString(),
         isLoading: false,
@@ -220,7 +291,12 @@ export const useStore = create<CashierStore>((set, get) => ({
               id: e.id,
               category: e.category,
               amount: e.amount,
+              paid_cash: e.paid_cash || 0,
+              paid_visa: e.paid_visa || 0,
+              paid_wallet: e.paid_wallet || 0,
+              paid_instapay: e.paid_instapay || 0,
               note: e.note,
+              payment_method: e.payment_method ?? 'cash',
               date: e.created_at
             }))
           });
@@ -228,6 +304,19 @@ export const useStore = create<CashierStore>((set, get) => ({
       } catch (e) {
         console.error("Expenses table might not exist yet:", e);
       }
+
+      // Fetch suppliers
+      try {
+        const { data: supData } = await supabase.from('suppliers').select('*').order('created_at', { ascending: false });
+        if (supData) {
+          set({ suppliers: supData as Supplier[] });
+        }
+      } catch (e) {
+        console.error("Suppliers table might not exist yet:", e);
+      }
+
+      // Load purchase invoices
+      get().loadPurchaseInvoices();
 
       // Sync settings across tabs
       const bc = new BroadcastChannel('cashier-sync');
@@ -363,8 +452,13 @@ export const useStore = create<CashierStore>((set, get) => ({
       items: state.cart.map((i) => ({ ...i })),
       total,
       paid_amount: savedPaidAmount,
+      paid_cash: savedPaidAmount,
+      paid_visa: 0,
+      paid_wallet: 0,
+      paid_instapay: 0,
       type,
       date: new Date().toISOString(),
+      payment_method: 'cash',
       customer: finalCustomer,
     };
 
@@ -476,16 +570,24 @@ export const useStore = create<CashierStore>((set, get) => ({
           returned_quantity: (i.returned_quantity as number) ?? 0,
         };
       });
+      const paid_amt = (o.paid_amount as number) ?? (o.total as number);
+      const p_method = (o.payment_method as any) ?? 'cash';
       return {
         id: o.id as string,
         total: o.total as number,
-        paid_amount: (o.paid_amount as number) ?? (o.total as number),
+        paid_amount: paid_amt,
+        paid_cash: (o.paid_cash as number) ?? (p_method === 'cash' ? paid_amt : 0),
+        paid_visa: (o.paid_visa as number) ?? (p_method === 'visa' ? paid_amt : 0),
+        paid_wallet: (o.paid_wallet as number) ?? (p_method === 'wallet' ? paid_amt : 0),
+        paid_instapay: (o.paid_instapay as number) ?? (p_method === 'instapay' ? paid_amt : 0),
         type: (o.type as string) as 'sale' | 'payment' | 'previous_debt' ?? 'sale',
         date: o.created_at as string,
-        items,
+        payment_method: p_method,
         customer: custRow
           ? { id: custRow.id as string, name: custRow.name as string, phone: custRow.phone as string, timestamp: custRow.created_at as string }
           : undefined,
+        cashier_name: o.cashier_name as string,
+        items,
       };
     });
 
@@ -503,8 +605,16 @@ export const useStore = create<CashierStore>((set, get) => ({
     if (newSettings.phone !== undefined) mapped.phone = newSettings.phone;
     if (newSettings.phone2 !== undefined) mapped.phone2 = newSettings.phone2;
     if (newSettings.whatsappCountryCode !== undefined) mapped.whatsapp_country_code = newSettings.whatsappCountryCode;
+    if (newSettings.initial_balance !== undefined) mapped.initial_balance = newSettings.initial_balance;
 
-    await supabase.from('store_settings').update(mapped).eq('id', (await supabase.from('store_settings').select('id').limit(1).maybeSingle()).data?.id);
+    const { data: existing } = await supabase.from('store_settings').select('id').limit(1).maybeSingle();
+    
+    if (existing?.id) {
+      await supabase.from('store_settings').update(mapped).eq('id', existing.id);
+    } else {
+      await supabase.from('store_settings').insert(mapped);
+    }
+    
     set((state) => ({ storeSettings: { ...state.storeSettings, ...newSettings } }));
     new BroadcastChannel('cashier-sync').postMessage('sync_settings');
   },
@@ -529,7 +639,12 @@ export const useStore = create<CashierStore>((set, get) => ({
     const { data, error } = await supabase.from('expenses').insert({
       category: expense.category,
       amount: expense.amount,
-      note: expense.note
+      paid_cash: expense.paid_cash || 0,
+      paid_visa: expense.paid_visa || 0,
+      paid_wallet: expense.paid_wallet || 0,
+      paid_instapay: expense.paid_instapay || 0,
+      note: expense.note,
+      payment_method: expense.payment_method
     }).select().single();
     
     if (error) {
@@ -542,7 +657,12 @@ export const useStore = create<CashierStore>((set, get) => ({
         id: (data as any).id,
         category: (data as any).category,
         amount: (data as any).amount,
+        paid_cash: (data as any).paid_cash || 0,
+        paid_visa: (data as any).paid_visa || 0,
+        paid_wallet: (data as any).paid_wallet || 0,
+        paid_instapay: (data as any).paid_instapay || 0,
         note: (data as any).note,
+        payment_method: (data as any).payment_method,
         date: (data as any).created_at
       };
       set((state) => ({ expenses: [newExp, ...state.expenses] }));
@@ -553,7 +673,12 @@ export const useStore = create<CashierStore>((set, get) => ({
     const { data, error } = await supabase.from('expenses').update({
       category: expense.category,
       amount: expense.amount,
-      note: expense.note
+      paid_cash: expense.paid_cash,
+      paid_visa: expense.paid_visa,
+      paid_wallet: expense.paid_wallet,
+      paid_instapay: expense.paid_instapay,
+      note: expense.note,
+      payment_method: expense.payment_method
     }).eq('id', id).select().single();
 
     if (error) {
@@ -571,5 +696,105 @@ export const useStore = create<CashierStore>((set, get) => ({
   deleteExpense: async (id) => {
     await supabase.from('expenses').delete().eq('id', id);
     set((state) => ({ expenses: state.expenses.filter((e) => e.id !== id) }));
+  },
+
+  // ── Suppliers ─────────────────────────────────────────────
+  addSupplier: async (supplier) => {
+    const { data, error } = await supabase.from('suppliers').insert(supplier).select().single();
+    if (error) {
+      console.error("Add Supplier Error:", error);
+      return;
+    }
+    if (data) {
+      set((state) => ({ suppliers: [data as unknown as Supplier, ...state.suppliers] }));
+    }
+  },
+
+  updateSupplier: async (id, updated) => {
+    const { data, error } = await supabase.from('suppliers').update(updated).eq('id', id).select().single();
+    if (error) {
+      console.error("Update Supplier Error:", error);
+      return;
+    }
+    if (data) {
+      set((state) => ({ suppliers: state.suppliers.map((s) => (s.id === id ? { ...s, ...updated } : s)) }));
+    }
+  },
+
+  deleteSupplier: async (id) => {
+    await supabase.from('suppliers').delete().eq('id', id);
+    set((state) => ({ suppliers: state.suppliers.filter((s) => s.id !== id) }));
+  },
+
+  // ── Purchases ─────────────────────────────────────────────
+  loadPurchaseInvoices: async () => {
+    try {
+      const { data } = await supabase.from('purchase_invoices').select('*, purchase_items(*)').order('created_at', { ascending: false });
+      if (data) {
+        const mapped = (data as any[]).map(inv => ({
+          ...inv,
+          paid_cash: inv.paid_cash || 0,
+          paid_visa: inv.paid_visa || 0,
+          paid_wallet: inv.paid_wallet || 0,
+          paid_instapay: inv.paid_instapay || 0,
+          items: inv.purchase_items || []
+        }));
+        set({ purchaseInvoices: mapped as PurchaseInvoice[] });
+      }
+    } catch (e) {
+      console.error("Purchase invoices load error:", e);
+    }
+  },
+
+  addPurchaseInvoice: async (invoice, items, splitPayments) => {
+    const state = get();
+    const { data: invData, error: invError } = await supabase
+      .from('purchase_invoices')
+      .insert({
+        invoice_number: invoice.invoice_number,
+        supplier_id: invoice.supplier_id,
+        total: invoice.total,
+        paid_amount: invoice.paid_amount,
+        paid_cash: splitPayments?.cash || 0,
+        paid_visa: splitPayments?.visa || 0,
+        paid_wallet: splitPayments?.wallet || 0,
+        paid_instapay: splitPayments?.instapay || 0,
+        payment_method: invoice.payment_method
+      })
+      .select()
+      .single();
+
+    if (invError) {
+      console.error("Add Purchase Invoice Error:", invError);
+      throw new Error(`خطأ في حفظ الفاتورة: ${invError.message}`);
+    }
+
+    const newInvoiceId = (invData as any).id;
+
+    const itemsToInsert = items.map(item => ({
+      invoice_id: newInvoiceId,
+      product_id: item.product_id,
+      quantity: item.quantity,
+      purchase_price: item.purchase_price
+    }));
+
+    const { error: itemsError } = await supabase.from('purchase_items').insert(itemsToInsert);
+    if (itemsError) {
+      console.error("Add Purchase Items Error:", itemsError);
+      throw new Error(`خطأ في حفظ أصناف الفاتورة: ${itemsError.message}`);
+    }
+
+    const updatedProducts = [...state.products];
+    for (const item of items) {
+      const productIndex = updatedProducts.findIndex(p => p.id === item.product_id);
+      if (productIndex !== -1) {
+        const product = updatedProducts[productIndex];
+        const oldQty = product.stock_quantity;
+        const newQty = oldQty + item.quantity;
+        await supabase.from('products').update({ stock_quantity: newQty }).eq('id', item.product_id);
+      }
+    }
+
+    get().loadPurchaseInvoices();
   },
 }));
