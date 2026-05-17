@@ -66,7 +66,12 @@ export default function Analytics() {
     orders.forEach(order => {
       if (order.type === 'payment' || order.type === 'previous_debt') return; // Skip payments and previous debt for sales analytics
 
-      revenue += order.total;
+      // Calculate return value taking discounts into account
+      const itemsSum = order.items.reduce((s: number, i: any) => s + (i.quantity * i.sale_price), 0);
+      const discountRatio = itemsSum > 0 ? order.total / itemsSum : 1;
+      const returnedVal = order.items.reduce((s: number, i: any) => s + (i.returned_quantity * i.sale_price), 0) * discountRatio;
+
+      revenue += (order.total - returnedVal);
       
       order.items.forEach((item: any) => {
         const qty = item.quantity - item.returned_quantity;
@@ -86,7 +91,7 @@ export default function Analytics() {
         if (!customersMap[order.customer.id]) {
           customersMap[order.customer.id] = { name: order.customer.name, total: 0, orders: 0 };
         }
-        customersMap[order.customer.id].total += order.total;
+        customersMap[order.customer.id].total += (order.total - returnedVal);
         customersMap[order.customer.id].orders += 1;
       }
     });

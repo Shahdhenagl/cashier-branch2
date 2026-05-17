@@ -6,7 +6,12 @@ export default function Overview() {
 
   // Exclude payments and previous debt from sales statistics
   const salesOrders = orders.filter((o) => o.type === 'sale' || !o.type);
-  const totalRevenue = salesOrders.reduce((sum, order) => sum + order.total, 0);
+  const totalRevenue = salesOrders.reduce((sum, order) => {
+    const itemsSum = order.items.reduce((s, i) => s + (i.quantity * i.sale_price), 0);
+    const discountRatio = itemsSum > 0 ? order.total / itemsSum : 1;
+    const returnedVal = order.items.reduce((s, i) => s + (i.returned_quantity * i.sale_price), 0) * discountRatio;
+    return sum + (order.total - returnedVal);
+  }, 0);
   const totalOrders = salesOrders.length;
   const lowStockProducts = products.filter((p) => p.stock_quantity < 5).length;
 

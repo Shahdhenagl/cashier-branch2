@@ -115,12 +115,12 @@ export default function Finance() {
     const outExp = periodTransactions.expenses.reduce((sum, e) => sum + ((e as any)[field] || 0), 0);
     const outPur = periodTransactions.purchases.reduce((sum, inv) => sum + ((inv as any)[field] || 0), 0);
     
-    const outRet = periodTransactions.orders.reduce((sum, o) => {
-      if (o.payment_method !== method) return sum;
+    // Returns are always refunded in CASH, so we only deduct them from cash balance
+    const outRet = method === 'cash' ? periodTransactions.orders.reduce((sum, o) => {
       const itemsSum = o.items.reduce((s, i) => s + (i.quantity * i.sale_price), 0);
       const discountRatio = itemsSum > 0 ? o.total / itemsSum : 1;
       return sum + (o.items.reduce((iSum, item) => iSum + (item.returned_quantity * item.sale_price), 0) * discountRatio);
-    }, 0);
+    }, 0) : 0;
 
     return inc - outExp - outPur - outRet;
   };
@@ -159,10 +159,10 @@ export default function Finance() {
       if (returnedVal > 0) {
         list.push({
           id: `${o.id}-return`,
-          type: 'مرتجع مبيعات',
+          type: 'مرتجع (مصروف كاش)',
           amount: returnedVal,
-          method: o.payment_method,
-          split: { cash: returnedVal, visa: 0, wallet: 0, instapay: 0 }, // Simplified for returns
+          method: 'cash', // Always cash!
+          split: { cash: returnedVal, visa: 0, wallet: 0, instapay: 0 },
           note: `مرتجع من فاتورة #${o.id}`,
           isOut: true,
           time: new Date(o.date).toLocaleString('ar-SA'),
