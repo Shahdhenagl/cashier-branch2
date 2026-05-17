@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useStore } from '../store/useStore';
-import { ShoppingCart, Search, Plus, Minus, Trash2, Banknote, RefreshCcw, Moon, Sun, ArrowRightLeft, X, Printer, User } from 'lucide-react';
+import { ShoppingCart, Search, Plus, Minus, Trash2, Banknote, RefreshCcw, Moon, Sun, ArrowRightLeft, X, Printer, User, CreditCard, Smartphone, Zap } from 'lucide-react';
 import { normalizeArabic } from '../utils/textUtils';
 
 
@@ -27,6 +27,8 @@ export default function POS() {
   const [lastInvoiceId, setLastInvoiceId] = useState('');
   const [lastCustomerInfo, setLastCustomerInfo] = useState<any>(null);
   const [lastOrderDetails, setLastOrderDetails] = useState<any>(null);
+  const [isPaymentMethodModalOpen, setIsPaymentMethodModalOpen] = useState(false);
+  const [checkoutShouldPrint, setCheckoutShouldPrint] = useState(false);
 
   useEffect(() => {
     if (isDarkMode) {
@@ -101,6 +103,14 @@ export default function POS() {
       }
     }
 
+    const methodLabels: Record<string, string> = {
+      cash: 'نقدي (كاش)',
+      visa: 'فيزا (بطاقة)',
+      wallet: 'محفظة إلكترونية',
+      instapay: 'انستا باي (InstaPay)'
+    };
+    const methodLabel = methodLabels[orderDetails.paymentMethod] || 'نقدي (كاش)';
+
     const html = `<!DOCTYPE html>
 <html dir="rtl" lang="ar">
 <head>
@@ -159,6 +169,10 @@ ${customerBlock}
   <div class="total-row"><span>الضريبة (${currentSettings.taxRate}%):</span><span>${orderDetails.tax.toFixed(2)} ${currentSettings.currency}</span></div>
   <div class="total-row grand-total"><span>الإجمالي:</span><span>${orderDetails.total.toFixed(2)} ${currentSettings.currency}</span></div>
   <div class="total-row" style="margin-top:4px;color:#059669;font-weight:bold;">
+    <span>طريقة الدفع:</span>
+    <span>${methodLabel}</span>
+  </div>
+  <div class="total-row" style="color:#059669;font-weight:bold;">
     <span>المبلغ المدفوع:</span>
     <span>${orderDetails.paidAmount.toFixed(2)} ${currentSettings.currency}</span>
   </div>
@@ -194,7 +208,7 @@ ${customerBlock}
     if (pw) { pw.document.write(html); pw.document.close(); }
   };
 
-  const doCheckout = async (shouldPrint: boolean) => {
+  const doCheckout = async (shouldPrint: boolean, paymentMethod: 'cash' | 'visa' | 'wallet' | 'instapay' = 'cash') => {
     const currentCart = [...cart];
     const currentSubtotal = subtotal;
     const currentDiscount = discount;
@@ -210,7 +224,13 @@ ${customerBlock}
       return;
     }
 
-    const invoiceId = await checkout(currentTotal, { name: currentCustomerName, phone: currentCustomerPhone }, finalPaidAmount, 'sale');
+    const invoiceId = await checkout(
+      currentTotal, 
+      { name: currentCustomerName, phone: currentCustomerPhone }, 
+      finalPaidAmount, 
+      'sale',
+      paymentMethod
+    );
     
     const details = {
       cart: currentCart,
@@ -220,7 +240,8 @@ ${customerBlock}
       total: currentTotal,
       paidAmount: finalPaidAmount,
       customerName: currentCustomerName,
-      customerPhone: currentCustomerPhone
+      customerPhone: currentCustomerPhone,
+      paymentMethod
     };
 
     setLastInvoiceId(invoiceId);
@@ -368,6 +389,92 @@ ${customerBlock}
                   </button>
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* PAYMENT METHOD MODAL */}
+      {isPaymentMethodModalOpen && (
+        <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-md flex items-center justify-center p-4" dir="rtl">
+          <div className="bg-white dark:bg-slate-800 rounded-[40px] shadow-2xl w-full max-w-lg overflow-hidden border border-gray-200 dark:border-slate-700 animate-in zoom-in-95 duration-200">
+            <div className="p-6 bg-gradient-to-l from-indigo-600 to-purple-600 text-white flex justify-between items-center">
+              <h2 className="text-xl font-bold flex items-center gap-2">
+                <Banknote size={24} /> اختر طريقة الدفع
+              </h2>
+              <button 
+                onClick={() => setIsPaymentMethodModalOpen(false)} 
+                className="hover:bg-white/20 p-2 rounded-full transition"
+              >
+                <X size={24} />
+              </button>
+            </div>
+            
+            <div className="p-8 flex flex-col gap-6">
+              <p className="text-slate-500 dark:text-slate-400 text-center font-bold text-base">
+                الرجاء اختيار طريقة استلام أو سداد قيمة الفاتورة:
+              </p>
+
+              <div className="grid grid-cols-2 gap-4">
+                <button
+                  onClick={async () => {
+                    setIsPaymentMethodModalOpen(false);
+                    await doCheckout(checkoutShouldPrint, 'cash');
+                  }}
+                  className="p-6 bg-slate-50 hover:bg-slate-100 dark:bg-slate-700/50 dark:hover:bg-slate-700 rounded-3xl border border-slate-200/60 dark:border-slate-600 flex flex-col items-center justify-center gap-3 transition group hover:shadow-lg"
+                >
+                  <div className="w-14 h-14 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-2xl flex items-center justify-center transition group-hover:scale-110">
+                    <Banknote size={32} />
+                  </div>
+                  <span className="font-black text-slate-800 dark:text-slate-200 text-lg">نقدي (كاش)</span>
+                </button>
+
+                <button
+                  onClick={async () => {
+                    setIsPaymentMethodModalOpen(false);
+                    await doCheckout(checkoutShouldPrint, 'visa');
+                  }}
+                  className="p-6 bg-slate-50 hover:bg-slate-100 dark:bg-slate-700/50 dark:hover:bg-slate-700 rounded-3xl border border-slate-200/60 dark:border-slate-600 flex flex-col items-center justify-center gap-3 transition group hover:shadow-lg"
+                >
+                  <div className="w-14 h-14 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-2xl flex items-center justify-center transition group-hover:scale-110">
+                    <CreditCard size={32} />
+                  </div>
+                  <span className="font-black text-slate-800 dark:text-slate-200 text-lg">فيزا (بطاقة)</span>
+                </button>
+
+                <button
+                  onClick={async () => {
+                    setIsPaymentMethodModalOpen(false);
+                    await doCheckout(checkoutShouldPrint, 'wallet');
+                  }}
+                  className="p-6 bg-slate-50 hover:bg-slate-100 dark:bg-slate-700/50 dark:hover:bg-slate-700 rounded-3xl border border-slate-200/60 dark:border-slate-600 flex flex-col items-center justify-center gap-3 transition group hover:shadow-lg"
+                >
+                  <div className="w-14 h-14 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-2xl flex items-center justify-center transition group-hover:scale-110">
+                    <Smartphone size={32} />
+                  </div>
+                  <span className="font-black text-slate-800 dark:text-slate-200 text-lg">محفظة إلكترونية</span>
+                </button>
+
+                <button
+                  onClick={async () => {
+                    setIsPaymentMethodModalOpen(false);
+                    await doCheckout(checkoutShouldPrint, 'instapay');
+                  }}
+                  className="p-6 bg-slate-50 hover:bg-slate-100 dark:bg-slate-700/50 dark:hover:bg-slate-700 rounded-3xl border border-slate-200/60 dark:border-slate-600 flex flex-col items-center justify-center gap-3 transition group hover:shadow-lg"
+                >
+                  <div className="w-14 h-14 bg-pink-50 dark:bg-pink-900/30 text-pink-600 dark:text-pink-400 rounded-2xl flex items-center justify-center transition group-hover:scale-110">
+                    <Zap size={32} />
+                  </div>
+                  <span className="font-black text-slate-800 dark:text-slate-200 text-lg">انستا باي (Insta)</span>
+                </button>
+              </div>
+
+              <button 
+                onClick={() => setIsPaymentMethodModalOpen(false)}
+                className="w-full bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 py-3.5 rounded-2xl font-bold transition-all text-center"
+              >
+                رجوع
+              </button>
             </div>
           </div>
         </div>
@@ -764,7 +871,10 @@ ${customerBlock}
           <div className="flex flex-col gap-3">
             <div className="flex gap-2">
               <button
-                onClick={() => doCheckout(false)}
+                onClick={() => {
+                  setCheckoutShouldPrint(false);
+                  setIsPaymentMethodModalOpen(true);
+                }}
                 disabled={cart.length === 0}
                 style={cart.length > 0 ? { background: storeSettings.themeColor } : {}}
                 className="flex-1 disabled:bg-gray-300 dark:disabled:bg-slate-700 disabled:text-gray-500 text-white py-4 rounded-2xl font-bold flex items-center justify-center gap-2 transition-all shadow-lg disabled:shadow-none text-base"
@@ -773,7 +883,10 @@ ${customerBlock}
                 تحصيل ودفع
               </button>
               <button
-                onClick={() => doCheckout(true)}
+                onClick={() => {
+                  setCheckoutShouldPrint(true);
+                  setIsPaymentMethodModalOpen(true);
+                }}
                 disabled={cart.length === 0}
                 className="flex-1 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 disabled:from-gray-300 disabled:to-gray-400 dark:disabled:from-slate-700 dark:disabled:to-slate-700 disabled:text-gray-500 text-white py-4 rounded-2xl font-bold flex items-center justify-center gap-2 transition-all shadow-lg shadow-emerald-500/20 disabled:shadow-none text-base border border-transparent"
               >

@@ -13,6 +13,7 @@ export default function DeferredAccounts() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState<any>(null);
   const [paymentAmount, setPaymentAmount] = useState<string>('');
+  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'visa' | 'wallet' | 'instapay'>('cash');
 
   // Add previous debt state
   const [isAddDebtOpen, setIsAddDebtOpen] = useState(false);
@@ -134,19 +135,22 @@ export default function DeferredAccounts() {
     }
 
     try {
-      // Pass total=0, paidAmount=amount, type='payment'
+      // Pass total=0, paidAmount=amount, type='payment', paymentMethod
       const invoiceId = await checkout(
         0, 
         { name: selectedCustomer.name, phone: selectedCustomer.phone }, 
         amount, 
-        'payment'
+        'payment',
+        paymentMethod
       );
       
       alert(`تم تسجيل الدفعة بنجاح!\nرقم الإيصال: ${invoiceId}`);
       setIsModalOpen(false);
       setSelectedCustomer(null);
       setPaymentAmount('');
+      setPaymentMethod('cash'); // Reset to cash
     } catch (e: any) {
+      console.error(e);
       alert('حدث خطأ أثناء معالجة الدفعة');
     }
   };
@@ -291,6 +295,20 @@ export default function DeferredAccounts() {
                   />
                   <div className="absolute left-4 top-4 text-slate-400 font-bold">{storeSettings.currency}</div>
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-bold text-slate-700 mb-2">طريقة الدفع</label>
+                <select
+                  value={paymentMethod}
+                  onChange={(e: any) => setPaymentMethod(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 text-base font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                >
+                  <option value="cash">نقدي (كاش)</option>
+                  <option value="visa">فيزا (بطاقة)</option>
+                  <option value="wallet">محفظة إلكترونية</option>
+                  <option value="instapay">انستا باي (InstaPay)</option>
+                </select>
               </div>
 
               <div className="flex gap-3 pt-2">

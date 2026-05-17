@@ -56,3 +56,10 @@ CREATE POLICY "allow all" ON purchase_items FOR ALL USING (true) WITH CHECK (tru
 -- 4. تحديث قيود جدول الطلبات للسماح بنوع "مديونية سابقة" (previous_debt)
 ALTER TABLE orders DROP CONSTRAINT IF EXISTS orders_type_check;
 ALTER TABLE orders ADD CONSTRAINT orders_type_check CHECK (type IN ('sale', 'payment', 'previous_debt'));
+
+-- 5. إضافة أعمدة طرق الدفع لجدول المبيعات (orders)
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS paid_cash numeric DEFAULT 0;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS paid_visa numeric DEFAULT 0;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS paid_wallet numeric DEFAULT 0;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS paid_instapay numeric DEFAULT 0;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS payment_method text DEFAULT 'cash';

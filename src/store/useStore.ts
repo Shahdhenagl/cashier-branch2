@@ -129,7 +129,14 @@ interface CashierStore {
   clearCart: () => void;
 
   // Operations
-  checkout: (total: number, customerDetails?: { name: string; phone: string }, paidAmount?: number, type?: 'sale' | 'payment' | 'previous_debt') => Promise<string>;
+  checkout: (
+    total: number, 
+    customerDetails?: { name: string; phone: string }, 
+    paidAmount?: number, 
+    type?: 'sale' | 'payment' | 'previous_debt',
+    paymentMethod?: 'cash' | 'visa' | 'wallet' | 'instapay',
+    splitPayments?: { cash: number; visa: number; wallet: number; instapay: number }
+  ) => Promise<string>;
   processReturn: (orderId: string, productId: string, returnQty: number) => Promise<boolean>;
 
   // Admin
@@ -369,7 +376,7 @@ export const useStore = create<CashierStore>((set, get) => ({
   clearCart: () => set({ cart: [] }),
 
   // ── Checkout ───────────────────────────────────────────────
-  checkout: async (total, customerDetails, paidAmount = total, type = 'sale') => {
+  checkout: async (total, customerDetails, paidAmount = total, type = 'sale', paymentMethod = 'cash', splitPayments) => {
     const state = get();
     if (state.cart.length === 0 && type !== 'payment' && type !== 'previous_debt') return state.activeInvoiceId;
 
@@ -403,6 +410,12 @@ export const useStore = create<CashierStore>((set, get) => ({
     }
 
     const savedPaidAmount = type === 'payment' ? paidAmount : Math.min(total, paidAmount);
+    
+    // Calculate split payment values
+    const paidCash = splitPayments ? splitPayments.cash : (paymentMethod === 'cash' ? savedPaidAmount : 0);
+    const paidVisa = splitPayments ? splitPayments.visa : (paymentMethod === 'visa' ? savedPaidAmount : 0);
+    const paidWallet = splitPayments ? splitPayments.wallet : (paymentMethod === 'wallet' ? savedPaidAmount : 0);
+    const paidInstapay = splitPayments ? splitPayments.instapay : (paymentMethod === 'instapay' ? savedPaidAmount : 0);
 
     // Insert order
     const { error: orderError } = await supabase.from('orders').insert({ 
@@ -410,7 +423,12 @@ export const useStore = create<CashierStore>((set, get) => ({
       total, 
       paid_amount: savedPaidAmount,
       type,
-      customer_id: customerId 
+      customer_id: customerId,
+      payment_method: paymentMethod,
+      paid_cash: paidCash,
+      paid_visa: paidVisa,
+      paid_wallet: paidWallet,
+      paid_instapay: paidInstapay
     });
 
     if (orderError) {
@@ -452,13 +470,13 @@ export const useStore = create<CashierStore>((set, get) => ({
       items: state.cart.map((i) => ({ ...i })),
       total,
       paid_amount: savedPaidAmount,
-      paid_cash: savedPaidAmount,
-      paid_visa: 0,
-      paid_wallet: 0,
-      paid_instapay: 0,
+      paid_cash: paidCash,
+      paid_visa: paidVisa,
+      paid_wallet: paidWallet,
+      paid_instapay: paidInstapay,
       type,
       date: new Date().toISOString(),
-      payment_method: 'cash',
+      payment_method: paymentMethod,
       customer: finalCustomer,
     };
 
