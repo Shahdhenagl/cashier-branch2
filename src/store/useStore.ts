@@ -43,6 +43,7 @@ export interface Order {
   payment_method: 'cash' | 'visa' | 'wallet' | 'instapay';
   customer?: Customer;
   cashier_name?: string;
+  isOffline?: boolean;
 }
 
 export interface Supplier {
@@ -116,6 +117,10 @@ interface CashierStore {
   activeInvoiceId: string;
   isLoading: boolean;
   dbError: string | null;
+  offlineQueue: any[];
+  isOnline: boolean;
+  isSyncing: boolean;
+  syncOfflineQueue: () => Promise<void>;
 
   // Data loading
   loadAll: () => Promise<void>;
@@ -208,6 +213,9 @@ export const useStore = create<CashierStore>((set, get) => ({
   activeInvoiceId: '1',
   isLoading: false,
   dbError: null,
+  offlineQueue: typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('cashier_offline_queue') || '[]') : [],
+  isOnline: typeof navigator !== 'undefined' ? navigator.onLine : true,
+  isSyncing: false,
 
   // ── Load all data from Supabase ────────────────────────────
   loadAll: async () => {
@@ -364,6 +372,135 @@ export const useStore = create<CashierStore>((set, get) => ({
     } catch(e) { console.error(e); }
   },
 
+  syncOfflineQueue: async () => {
+    const state = get();
+    if (state.isSyncing || state.offlineQueue.length === 0) return;
+
+    set({ isSyncing: true });
+
+    const queue = [...state.offlineQueue];
+    const failedOrders = [];
+
+    for (const offlineOrder of queue) {
+      try {
+        const { data: counterData, error: counterError } = await supabase
+          .from('invoice_counter')
+          .select('current_value')
+          .eq('id', 1)
+          .single();
+
+        if (counterError || !counterData) {
+          throw new Error("Could not fetch counter");
+        }
+
+        const realInvoiceId = (counterData as any).current_value.toString();
+        const nextCounter = (counterData as any).current_value + 1;
+
+        await supabase
+          .from('invoice_counter')
+          .update({ current_value: nextCounter })
+          .eq('id', 1);
+
+        let customerId: string | null = null;
+        let finalCustomer = offlineOrder.customer;
+
+        if (finalCustomer) {
+          const phone = finalCustomer.phone?.trim();
+          
+          let existingCust = null;
+          if (phone) {
+            const { data } = await supabase
+              .from('customers')
+              .select('*')
+              .eq('phone', phone)
+              .maybeSingle();
+            existingCust = data;
+          }
+
+          if (existingCust) {
+            customerId = existingCust.id;
+            finalCustomer = {
+              id: existingCust.id,
+              name: existingCust.name,
+              phone: existingCust.phone,
+              timestamp: existingCust.created_at
+            };
+          } else {
+            const { data: newCust } = await supabase
+              .from('customers')
+              .insert({ 
+                name: finalCustomer.name || 'بدون اسم', 
+                phone: phone || null
+              })
+              .select()
+              .single();
+            if (newCust) {
+              customerId = (newCust as any).id;
+              finalCustomer = {
+                id: customerId!,
+                name: (newCust as any).name,
+                phone: (newCust as any).phone,
+                timestamp: (newCust as any).created_at
+              };
+            }
+          }
+        }
+
+        const { error: orderError } = await supabase.from('orders').insert({ 
+          id: realInvoiceId, 
+          total: offlineOrder.total, 
+          paid_amount: offlineOrder.paid_amount,
+          paid_cash: offlineOrder.paid_cash,
+          paid_visa: offlineOrder.paid_visa,
+          paid_wallet: offlineOrder.paid_wallet,
+          paid_instapay: offlineOrder.paid_instapay,
+          type: offlineOrder.type,
+          customer_id: customerId,
+          payment_method: offlineOrder.payment_method,
+          cashier_name: offlineOrder.cashier_name,
+          created_at: offlineOrder.date
+        });
+
+        if (orderError) throw orderError;
+
+        const itemsPayload = offlineOrder.items.map((item: any) => ({
+          order_id: realInvoiceId,
+          product_id: item.id,
+          product_name: item.name,
+          barcode: item.barcode,
+          quantity: item.quantity,
+          returned_quantity: 0,
+          sale_price: item.sale_price,
+          purchase_price: item.purchase_price || 0,
+        }));
+        const { error: itemsError } = await supabase.from('order_items').insert(itemsPayload);
+        if (itemsError) console.error("Sync Order Items Error:", itemsError);
+
+        for (const item of offlineOrder.items) {
+          const { data: prodData } = await supabase.from('products').select('stock_quantity').eq('id', item.id).single();
+          const currentStock = prodData?.stock_quantity ?? 0;
+          await supabase.from('products').update({ stock_quantity: Math.max(0, currentStock - item.quantity) }).eq('id', item.id);
+        }
+
+        set((s) => ({
+          orders: s.orders.map(o => o.id === offlineOrder.id ? { ...o, id: realInvoiceId, customer: finalCustomer || undefined, isOffline: false } : o)
+        }));
+
+      } catch (err) {
+        console.error("Failed to sync offline order:", offlineOrder.id, err);
+        failedOrders.push(offlineOrder);
+      }
+    }
+
+    localStorage.setItem('cashier_offline_queue', JSON.stringify(failedOrders));
+    set({
+      offlineQueue: failedOrders,
+      isSyncing: false
+    });
+
+    new BroadcastChannel('cashier-sync').postMessage('sync_products');
+  },
+
   // ── Cart ───────────────────────────────────────────────────
   addToCart: (product) =>
     set((state) => {
@@ -399,34 +536,6 @@ export const useStore = create<CashierStore>((set, get) => ({
     if (state.cart.length === 0 && type !== 'payment' && type !== 'previous_debt') return state.activeInvoiceId;
 
     const invoiceId = state.activeInvoiceId;
-    let customerId: string | null = null;
-    let finalCustomer: Customer | undefined;
-
-    // Upsert customer
-    if (customerDetails?.phone.trim()) {
-      const phone = customerDetails.phone.trim();
-      const existing = state.customers.find((c) => c.phone === phone);
-      if (existing) {
-        customerId = existing.id;
-        finalCustomer = existing;
-      } else {
-        const { data: newCust } = await supabase
-          .from('customers')
-          .insert({ name: customerDetails.name || 'بدون اسم', phone })
-          .select()
-          .single();
-        if (newCust) {
-          customerId = (newCust as Record<string, unknown>).id as string;
-          finalCustomer = {
-            id: customerId,
-            name: (newCust as Record<string, unknown>).name as string,
-            phone,
-            timestamp: (newCust as Record<string, unknown>).created_at as string,
-          };
-        }
-      }
-    }
-
     const savedPaidAmount = type === 'payment' ? paidAmount : Math.min(total, paidAmount);
     
     // Calculate split payment values
@@ -435,90 +544,190 @@ export const useStore = create<CashierStore>((set, get) => ({
     const paidWallet = splitPayments ? splitPayments.wallet : (paymentMethod === 'wallet' ? savedPaidAmount : 0);
     const paidInstapay = splitPayments ? splitPayments.instapay : (paymentMethod === 'instapay' ? savedPaidAmount : 0);
 
-    // Insert order
-    const { error: orderError } = await supabase.from('orders').insert({ 
-      id: invoiceId, 
-      total, 
-      paid_amount: savedPaidAmount,
-      type,
-      customer_id: customerId,
-      payment_method: paymentMethod,
-      paid_cash: paidCash,
-      paid_visa: paidVisa,
-      paid_wallet: paidWallet,
-      paid_instapay: paidInstapay
-    });
+    const executeOfflineCheckout = () => {
+      const offlineId = `OFF-${Date.now()}`;
+      
+      let customerId: string | null = null;
+      let finalCustomer: Customer | undefined;
+      
+      if (customerDetails?.phone.trim()) {
+        const phone = customerDetails.phone.trim();
+        const existing = state.customers.find((c) => c.phone === phone);
 
-    if (orderError) {
-      console.error("Order Insert Error:", orderError);
-      alert(`خطأ في الحفظ: ${orderError.message}`);
-      return invoiceId; // Exit maybe? or throw
-    }
-
-    // Insert order items
-    const itemsPayload = state.cart.map((item) => ({
-      order_id: invoiceId,
-      product_id: item.id,
-      product_name: item.name,
-      barcode: item.barcode,
-      quantity: item.quantity,
-      returned_quantity: 0,
-      sale_price: item.sale_price,
-    }));
-    if (itemsPayload.length > 0) {
-      const { error: itemsError } = await supabase.from('order_items').insert(itemsPayload);
-      if (itemsError) {
-        console.error("Order Items Insert Error:", itemsError);
+        if (existing) {
+          customerId = existing.id;
+          finalCustomer = existing;
+        } else {
+          customerId = `OFF-CUST-${Date.now()}`;
+          finalCustomer = {
+            id: customerId,
+            name: customerDetails.name || 'بدون اسم',
+            phone: phone,
+            timestamp: new Date().toISOString()
+          };
+        }
       }
-    }
 
-    // Update stock
-    for (const item of state.cart) {
-      const newQty = (state.products.find((p) => p.id === item.id)?.stock_quantity ?? 0) - item.quantity;
-      await supabase.from('products').update({ stock_quantity: Math.max(0, newQty) }).eq('id', item.id);
-    }
+      const newOfflineOrder = {
+        id: offlineId,
+        total,
+        paid_amount: savedPaidAmount,
+        paid_cash: paidCash,
+        paid_visa: paidVisa,
+        paid_wallet: paidWallet,
+        paid_instapay: paidInstapay,
+        type,
+        payment_method: paymentMethod as any,
+        date: new Date().toISOString(),
+        customer: finalCustomer,
+        items: state.cart.map((i) => ({ ...i })),
+        isOffline: true
+      };
 
-    // Increment counter
-    const nextCounter = state.invoiceCounter + 1;
-    await supabase.from('invoice_counter').update({ current_value: nextCounter }).eq('id', 1);
+      const updatedQueue = [...state.offlineQueue, newOfflineOrder];
+      localStorage.setItem('cashier_offline_queue', JSON.stringify(updatedQueue));
 
-    // Build new order for local state
-    const newOrder: Order = {
-      id: invoiceId,
-      items: state.cart.map((i) => ({ ...i })),
-      total,
-      paid_amount: savedPaidAmount,
-      paid_cash: paidCash,
-      paid_visa: paidVisa,
-      paid_wallet: paidWallet,
-      paid_instapay: paidInstapay,
-      type,
-      date: new Date().toISOString(),
-      payment_method: paymentMethod,
-      customer: finalCustomer,
+      const updatedProducts = state.products.map((p) => {
+        const cartItem = state.cart.find((c) => c.id === p.id);
+        return cartItem ? { ...p, stock_quantity: Math.max(0, p.stock_quantity - cartItem.quantity) } : p;
+      });
+
+      const updatedCustomers = finalCustomer && !state.customers.find((c) => c.id === finalCustomer!.id)
+        ? [finalCustomer, ...state.customers]
+        : state.customers;
+
+      set({
+        orders: [newOfflineOrder, ...state.orders],
+        cart: [],
+        products: updatedProducts,
+        customers: updatedCustomers,
+        offlineQueue: updatedQueue
+      });
+
+      return offlineId;
     };
 
-    const updatedProducts = state.products.map((p) => {
-      const cartItem = state.cart.find((c) => c.id === p.id);
-      return cartItem ? { ...p, stock_quantity: Math.max(0, p.stock_quantity - cartItem.quantity) } : p;
-    });
+    try {
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        throw new Error("No network connectivity");
+      }
 
-    const updatedCustomers = finalCustomer && !state.customers.find((c) => c.id === finalCustomer!.id)
-      ? [finalCustomer, ...state.customers]
-      : state.customers;
+      let customerId: string | null = null;
+      let finalCustomer: Customer | undefined;
 
-    set({
-      orders: [newOrder, ...state.orders],
-      cart: [],
-      products: updatedProducts,
-      customers: updatedCustomers,
-      invoiceCounter: nextCounter,
-      activeInvoiceId: nextCounter.toString(),
-    });
+      // Upsert customer
+      if (customerDetails?.phone.trim()) {
+        const phone = customerDetails.phone.trim();
+        const existing = state.customers.find((c) => c.phone === phone);
+        if (existing) {
+          customerId = existing.id;
+          finalCustomer = existing;
+        } else {
+          const { data: newCust } = await supabase
+            .from('customers')
+            .insert({ name: customerDetails.name || 'بدون اسم', phone })
+            .select()
+            .single();
+          if (newCust) {
+            customerId = (newCust as Record<string, unknown>).id as string;
+            finalCustomer = {
+              id: customerId,
+              name: (newCust as Record<string, unknown>).name as string,
+              phone,
+              timestamp: (newCust as Record<string, unknown>).created_at as string,
+            };
+          }
+        }
+      }
 
-    new BroadcastChannel('cashier-sync').postMessage('sync_products');
+      // Insert order
+      const { error: orderError } = await supabase.from('orders').insert({ 
+        id: invoiceId, 
+        total, 
+        paid_amount: savedPaidAmount,
+        type,
+        customer_id: customerId,
+        payment_method: paymentMethod,
+        paid_cash: paidCash,
+        paid_visa: paidVisa,
+        paid_wallet: paidWallet,
+        paid_instapay: paidInstapay
+      });
 
-    return invoiceId;
+      if (orderError) {
+        console.error("Order Insert Error:", orderError);
+        alert(`خطأ في الحفظ: ${orderError.message}`);
+        return invoiceId;
+      }
+
+      // Insert order items
+      const itemsPayload = state.cart.map((item) => ({
+        order_id: invoiceId,
+        product_id: item.id,
+        product_name: item.name,
+        barcode: item.barcode,
+        quantity: item.quantity,
+        returned_quantity: 0,
+        sale_price: item.sale_price,
+      }));
+      if (itemsPayload.length > 0) {
+        const { error: itemsError } = await supabase.from('order_items').insert(itemsPayload);
+        if (itemsError) {
+          console.error("Order Items Insert Error:", itemsError);
+        }
+      }
+
+      // Update stock
+      for (const item of state.cart) {
+        const newQty = (state.products.find((p) => p.id === item.id)?.stock_quantity ?? 0) - item.quantity;
+        await supabase.from('products').update({ stock_quantity: Math.max(0, newQty) }).eq('id', item.id);
+      }
+
+      // Increment counter
+      const nextCounter = state.invoiceCounter + 1;
+      await supabase.from('invoice_counter').update({ current_value: nextCounter }).eq('id', 1);
+
+      // Build new order for local state
+      const newOrder: Order = {
+        id: invoiceId,
+        items: state.cart.map((i) => ({ ...i })),
+        total,
+        paid_amount: savedPaidAmount,
+        paid_cash: paidCash,
+        paid_visa: paidVisa,
+        paid_wallet: paidWallet,
+        paid_instapay: paidInstapay,
+        type,
+        date: new Date().toISOString(),
+        payment_method: paymentMethod,
+        customer: finalCustomer,
+      };
+
+      const updatedProducts = state.products.map((p) => {
+        const cartItem = state.cart.find((c) => c.id === p.id);
+        return cartItem ? { ...p, stock_quantity: Math.max(0, p.stock_quantity - cartItem.quantity) } : p;
+      });
+
+      const updatedCustomers = finalCustomer && !state.customers.find((c) => c.id === finalCustomer!.id)
+        ? [finalCustomer, ...state.customers]
+        : state.customers;
+
+      set({
+        orders: [newOrder, ...state.orders],
+        cart: [],
+        products: updatedProducts,
+        customers: updatedCustomers,
+        invoiceCounter: nextCounter,
+        activeInvoiceId: nextCounter.toString(),
+      });
+
+      new BroadcastChannel('cashier-sync').postMessage('sync_products');
+
+      return invoiceId;
+    } catch (err) {
+      console.warn("Network offline or Supabase connection failed. Falling back to offline checkout:", err);
+      return executeOfflineCheckout();
+    }
   },
 
   // ── Returns ────────────────────────────────────────────────
