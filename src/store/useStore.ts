@@ -371,7 +371,7 @@ export const useStore = create<CashierStore>((set, get) => ({
   // ── Checkout ───────────────────────────────────────────────
   checkout: async (total, customerDetails, paidAmount = total, type = 'sale') => {
     const state = get();
-    if (state.cart.length === 0 && type !== 'payment') return state.activeInvoiceId;
+    if (state.cart.length === 0 && type !== 'payment' && type !== 'previous_debt') return state.activeInvoiceId;
 
     const invoiceId = state.activeInvoiceId;
     let customerId: string | null = null;
