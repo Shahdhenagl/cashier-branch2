@@ -52,3 +52,7 @@ ALTER TABLE purchase_items ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "allow all" ON suppliers FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "allow all" ON purchase_invoices FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "allow all" ON purchase_items FOR ALL USING (true) WITH CHECK (true);
+
+-- 4. تحديث قيود جدول الطلبات للسماح بنوع "مديونية سابقة" (previous_debt)
+ALTER TABLE orders DROP CONSTRAINT IF EXISTS orders_type_check;
+ALTER TABLE orders ADD CONSTRAINT orders_type_check CHECK (type IN ('sale', 'payment', 'previous_debt'));
