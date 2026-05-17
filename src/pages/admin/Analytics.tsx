@@ -64,7 +64,7 @@ export default function Analytics() {
     let customersMap: Record<string, { name: string, total: number, orders: number }> = {};
 
     orders.forEach(order => {
-      if (order.type === 'payment') return; // Skip payments for sales analytics
+      if (order.type === 'payment' || order.type === 'previous_debt') return; // Skip payments and previous debt for sales analytics
 
       revenue += order.total;
       

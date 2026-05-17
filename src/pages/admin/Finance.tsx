@@ -52,11 +52,11 @@ export default function Finance() {
     }
     
     const ordersIn = orders
-      .filter(o => new Date(o.date) < startOfPeriod)
+      .filter(o => o.type !== 'previous_debt' && new Date(o.date) < startOfPeriod)
       .reduce((sum, o) => sum + o.paid_amount, 0);
     
     const returnsOut = orders
-      .filter(o => new Date(o.date) < selDate)
+      .filter(o => o.type !== 'previous_debt' && new Date(o.date) < selDate)
       .reduce((sum, o) => sum + o.items.reduce((iSum, item) => iSum + (item.returned_quantity * item.sale_price), 0), 0);
 
     const expensesOut = expenses
@@ -77,6 +77,7 @@ export default function Finance() {
     const selDate = new Date(selectedDate);
     return {
       orders: orders.filter(o => {
+        if (o.type === 'previous_debt') return false; // Exclude previous debt from cashbox completely
         const d = new Date(o.date);
         if (filterType === 'monthly') return d.getFullYear() === selDate.getFullYear() && d.getMonth() === selDate.getMonth();
         if (filterType === 'yearly') return d.getFullYear() === selDate.getFullYear();

@@ -4,8 +4,10 @@ import { Banknote, ShoppingBag, ReceiptText } from 'lucide-react';
 export default function Overview() {
   const { orders, products, storeSettings } = useStore();
 
-  const totalRevenue = orders.reduce((sum, order) => sum + order.total, 0);
-  const totalOrders = orders.length;
+  // Exclude payments and previous debt from sales statistics
+  const salesOrders = orders.filter((o) => o.type === 'sale' || !o.type);
+  const totalRevenue = salesOrders.reduce((sum, order) => sum + order.total, 0);
+  const totalOrders = salesOrders.length;
   const lowStockProducts = products.filter((p) => p.stock_quantity < 5).length;
 
   return (
@@ -68,10 +70,10 @@ export default function Overview() {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {orders.length === 0 ? (
+            {salesOrders.length === 0 ? (
               <tr><td colSpan={4} className="p-8 text-center text-slate-400">لا توجد مبيعات حتى الآن</td></tr>
             ) : (
-              orders.slice(0, 10).map((order) => (
+              salesOrders.slice(0, 10).map((order) => (
                 <tr key={order.id} className="hover:bg-slate-50 transition">
                   <td className="p-4 font-bold text-indigo-600 font-mono">{order.id}</td>
                   <td className="p-4 text-slate-600">{new Date(order.date).toLocaleDateString('ar-SA')}</td>
