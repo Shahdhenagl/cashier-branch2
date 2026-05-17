@@ -81,16 +81,23 @@ export default function POS() {
       ? `<div class="customer-box"><strong>العميل:</strong> ${orderDetails.customerName || '—'} &nbsp;|&nbsp; <strong>هاتف:</strong> <span dir="ltr">${orderDetails.customerPhone || '—'}</span></div>`
       : '';
 
-    // Calculate TOTAL debt for this customer up to this invoice
-    let totalCustomerDebt = 0;
+    // Calculate debt before and after invoice
+    let debtBeforeInvoice = 0;
+    let debtAfterInvoice = 0;
+    let hasDebt = false;
     if (orderDetails.customerPhone) {
       const existingCust = customers.find(c => c.phone === orderDetails.customerPhone);
       if (existingCust) {
         const cOrders = orders.filter(o => o.customer?.id === existingCust.id);
-        // Include historical debt + current invoice debt
-        const historicalDebt = cOrders.reduce((sum, o) => sum + (o.total - o.paid_amount), 0);
+        debtBeforeInvoice = cOrders.reduce((sum, o) => {
+          const effectiveTotal = o.type === 'payment' ? 0 : o.total;
+          return sum + (effectiveTotal - o.paid_amount);
+        }, 0);
         const currentInvoiceDebt = orderDetails.total - orderDetails.paidAmount;
-        totalCustomerDebt = historicalDebt + currentInvoiceDebt;
+        debtAfterInvoice = debtBeforeInvoice + currentInvoiceDebt;
+        if (debtBeforeInvoice > 0 || debtAfterInvoice > 0) {
+          hasDebt = true;
+        }
       }
     }
 
@@ -155,10 +162,16 @@ ${customerBlock}
     <div class="total-row" style="margin-top:4px;color:#059669;font-weight:bold;"><span>المبلغ المدفوع:</span><span>${orderDetails.paidAmount.toFixed(2)} ${currentSettings.currency}</span></div>
     <div class="total-row" style="color:#dc2626;font-weight:900;font-size:14px;border-top:1px dashed #eee;margin-top:2px;padding-top:2px;"><span>المتبقي (آجل):</span><span>${(orderDetails.total - orderDetails.paidAmount).toFixed(2)} ${currentSettings.currency}</span></div>
   ` : ''}
-  ${totalCustomerDebt > 0 ? `
-    <div class="debt-row" style="background:#fef2f2; border-color:#fee2e2; margin-top:8px;">
-      <span style="color:#991b1b; font-weight:bold;">إجمالي المديونية الحالية:</span>
-      <span style="font-weight:900; color:#b91c1c;">${totalCustomerDebt.toFixed(2)} ${currentSettings.currency}</span>
+  ${hasDebt ? `
+    <div class="debt-row" style="background:#fef2f2; border-color:#fee2e2; margin-top:8px; display:flex; flex-direction:column; gap:4px; padding:8px 12px; width:100%;">
+      <div style="display:flex; justify-content:space-between; font-size:12px; color:#555; width:100%;">
+        <span>الآجل قبل الفاتورة:</span>
+        <span style="font-weight:700;">${Math.max(0, debtBeforeInvoice).toFixed(2)} ${currentSettings.currency}</span>
+      </div>
+      <div style="display:flex; justify-content:space-between; font-size:13px; font-weight:bold; color:#b91c1c; border-top:1px dashed #fee2e2; padding-top:4px; margin-top:2px; width:100%;">
+        <span>الآجل بعد الفاتورة:</span>
+        <span style="font-weight:900;">${Math.max(0, debtAfterInvoice).toFixed(2)} ${currentSettings.currency}</span>
+      </div>
     </div>
   ` : ''}
 </div>
@@ -377,8 +390,8 @@ ${customerBlock}
               {activeReturnOrder && (() => {
                 const initialDebt = Math.max(0, activeReturnOrder.total - activeReturnOrder.paid_amount);
                 const totalReturnedValue = activeReturnOrder.items.reduce((sum: number, item: any) => sum + (item.returned_quantity * item.sale_price), 0);
-                const cashRefund = Math.max(0, totalReturnedValue - initialDebt);
-                const debtReduction = Math.min(totalReturnedValue, initialDebt);
+                const cashRefund = totalReturnedValue;
+                const debtReduction = 0;
                 
                 return (
                   <>

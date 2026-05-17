@@ -34,7 +34,7 @@ export interface Order {
   items: OrderItem[];
   total: number;
   paid_amount: number;
-  type: 'sale' | 'payment';
+  type: 'sale' | 'payment' | 'previous_debt';
   date: string;
   customer?: Customer;
 }
@@ -85,7 +85,7 @@ interface CashierStore {
   clearCart: () => void;
 
   // Operations
-  checkout: (total: number, customerDetails?: { name: string; phone: string }, paidAmount?: number, type?: 'sale' | 'payment') => Promise<string>;
+  checkout: (total: number, customerDetails?: { name: string; phone: string }, paidAmount?: number, type?: 'sale' | 'payment' | 'previous_debt') => Promise<string>;
   processReturn: (orderId: string, productId: string, returnQty: number) => Promise<boolean>;
 
   // Admin
@@ -188,7 +188,7 @@ export const useStore = create<CashierStore>((set, get) => ({
           id: o.id as string,
           total: o.total as number,
           paid_amount: (o.paid_amount as number) ?? (o.total as number),
-          type: (o.type as string) as 'sale' | 'payment' ?? 'sale',
+          type: (o.type as string) as 'sale' | 'payment' | 'previous_debt' ?? 'sale',
           date: o.created_at as string,
           items,
           customer: custRow
@@ -340,9 +340,11 @@ export const useStore = create<CashierStore>((set, get) => ({
       returned_quantity: 0,
       sale_price: item.sale_price,
     }));
-    const { error: itemsError } = await supabase.from('order_items').insert(itemsPayload);
-    if (itemsError) {
-      console.error("Order Items Insert Error:", itemsError);
+    if (itemsPayload.length > 0) {
+      const { error: itemsError } = await supabase.from('order_items').insert(itemsPayload);
+      if (itemsError) {
+        console.error("Order Items Insert Error:", itemsError);
+      }
     }
 
     // Update stock
@@ -478,7 +480,7 @@ export const useStore = create<CashierStore>((set, get) => ({
         id: o.id as string,
         total: o.total as number,
         paid_amount: (o.paid_amount as number) ?? (o.total as number),
-        type: (o.type as string) as 'sale' | 'payment' ?? 'sale',
+        type: (o.type as string) as 'sale' | 'payment' | 'previous_debt' ?? 'sale',
         date: o.created_at as string,
         items,
         customer: custRow

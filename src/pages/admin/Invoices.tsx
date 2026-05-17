@@ -15,22 +15,35 @@ export default function Invoices() {
   const handlePrint = (order: any) => {
     const printDate = new Date(order.date).toLocaleString('ar-SA');
     const isPayment = order.type === 'payment';
+    const isPreviousDebt = order.type === 'previous_debt';
     const subtotal = order.items.reduce((sum: number, item: any) => sum + (item.sale_price * item.quantity), 0);
     const taxValue = order.total - subtotal;
     
-    // Calculate TOTAL debt for this customer up to this invoice
-    let totalCustomerDebt = 0;
+    // Calculate debt before and after invoice
+    let debtBeforeInvoice = 0;
+    let debtAfterInvoice = 0;
+    let hasDebt = false;
+
     if (order.customer) {
       const customerOrders = orders.filter(o => o.customer?.id === order.customer.id);
       // Sort by date to calculate historical balance correctly
       const sortedOrders = [...customerOrders].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
       const currentIndex = sortedOrders.findIndex(o => o.id === order.id);
       
-      // All orders up to and including this one
-      totalCustomerDebt = sortedOrders.slice(0, currentIndex + 1).reduce((sum, o) => {
+      // All orders up to and including this one (Debt after)
+      debtAfterInvoice = sortedOrders.slice(0, currentIndex + 1).reduce((sum, o) => {
         const effectiveTotal = o.type === 'payment' ? 0 : o.total;
         return sum + (effectiveTotal - o.paid_amount);
       }, 0);
+
+      const currentInvoiceDebt = order.type === 'payment' ? -order.paid_amount : (order.total - order.paid_amount);
+      
+      // Total debt BEFORE this invoice
+      debtBeforeInvoice = debtAfterInvoice - currentInvoiceDebt;
+
+      if (debtBeforeInvoice > 0 || debtAfterInvoice > 0) {
+        hasDebt = true;
+      }
     }
 
     let itemsHtml = '';
@@ -38,6 +51,11 @@ export default function Invoices() {
       itemsHtml = `<tr>
         <td colspan="2" style="padding:12px 4px;border-bottom:1px dashed #ddd;font-size:14px;font-weight:bold;">سداد مديونية سابقة</td>
         <td style="padding:12px 4px;border-bottom:1px dashed #ddd;text-align:left;font-size:14px;font-weight:bold;">${order.paid_amount.toFixed(2)}</td>
+      </tr>`;
+    } else if (isPreviousDebt) {
+      itemsHtml = `<tr>
+        <td colspan="2" style="padding:12px 4px;border-bottom:1px dashed #ddd;font-size:14px;font-weight:bold;">مديونية سابقة مسجلة</td>
+        <td style="padding:12px 4px;border-bottom:1px dashed #ddd;text-align:left;font-size:14px;font-weight:bold;">${order.total.toFixed(2)}</td>
       </tr>`;
     } else {
       itemsHtml = order.items.map((item: any) =>
@@ -94,7 +112,7 @@ export default function Invoices() {
     <span>${printDate}</span>
   </div>
   ${customerBlock}
-  ${isPayment ? `<h3 style="text-align:center;margin:10px 0;font-size:16px;color:#444;">إيصال سداد نقدي</h3>` : ''}
+  ${isPayment ? `<h3 style="text-align:center;margin:10px 0;font-size:16px;color:#444;">إيصال سداد نقدي</h3>` : isPreviousDebt ? `<h3 style="text-align:center;margin:10px 0;font-size:16px;color:#444;">إثبات مديونية سابقة</h3>` : ''}
   <table>
     <thead><tr>
       <th>${isPayment ? 'البيان' : 'المنتج'}</th>
@@ -110,9 +128,15 @@ export default function Invoices() {
         <span>إجمالي المبلغ المسدد:</span>
         <span>${order.paid_amount.toFixed(2)} ${storeSettings.currency}</span>
       </div>
-      <div class="debt-row" style="background:#fff7ed; border-color:#fed7aa;">
-        <span>إجمالي مديونية العميل حالياً:</span>
-        <span style="font-weight:900; color:#c2410c;">${Math.max(0, totalCustomerDebt).toFixed(2)} ${storeSettings.currency}</span>
+      <div class="debt-row" style="background:#fff7ed; border-color:#fed7aa; display:flex; flex-direction:column; gap:4px; padding:8px 12px; margin-top:8px; width:100%;">
+        <div style="display:flex; justify-content:space-between; font-size:12px; color:#c2410c; width:100%;">
+          <span>الآجل قبل السداد:</span>
+          <span style="font-weight:700;">${Math.max(0, debtBeforeInvoice).toFixed(2)} ${storeSettings.currency}</span>
+        </div>
+        <div style="display:flex; justify-content:space-between; font-size:13px; font-weight:bold; color:#c2410c; border-top:1px dashed #fed7aa; padding-top:4px; margin-top:2px; width:100%;">
+          <span>الآجل بعد السداد:</span>
+          <span style="font-weight:900;">${Math.max(0, debtAfterInvoice).toFixed(2)} ${storeSettings.currency}</span>
+        </div>
       </div>
     ` : `
       <div class="total-row"><span>المجموع الفرعي:</span><span>${subtotal.toFixed(2)} ${storeSettings.currency}</span></div>
@@ -122,10 +146,16 @@ export default function Invoices() {
         <div class="total-row" style="margin-top:4px;color:#059669;font-weight:bold;"><span>المبلغ المدفوع:</span><span>${order.paid_amount.toFixed(2)} ${storeSettings.currency}</span></div>
         <div class="total-row" style="color:#dc2626;font-weight:900;font-size:14px;border-top:1px dashed #eee;margin-top:2px;padding-top:2px;"><span>المتبقي (آجل):</span><span>${(order.total - order.paid_amount).toFixed(2)} ${storeSettings.currency}</span></div>
       ` : ''}
-      ${order.customer ? `
-        <div class="debt-row" style="background:#fef2f2; border-color:#fee2e2; margin-top:8px;">
-          <span style="color:#991b1b; font-weight:bold;">إجمالي المديونية (بعد هذه الفاتورة):</span>
-          <span style="font-weight:900; color:#b91c1c;">${Math.max(0, totalCustomerDebt).toFixed(2)} ${storeSettings.currency}</span>
+      ${hasDebt ? `
+        <div class="debt-row" style="background:#fef2f2; border-color:#fee2e2; margin-top:8px; display:flex; flex-direction:column; gap:4px; padding:8px 12px; width:100%;">
+          <div style="display:flex; justify-content:space-between; font-size:12px; color:#555; width:100%;">
+            <span>الآجل قبل الفاتورة:</span>
+            <span style="font-weight:700;">${Math.max(0, debtBeforeInvoice).toFixed(2)} ${storeSettings.currency}</span>
+          </div>
+          <div style="display:flex; justify-content:space-between; font-size:13px; font-weight:bold; color:#b91c1c; border-top:1px dashed #fee2e2; padding-top:4px; margin-top:2px; width:100%;">
+            <span>الآجل بعد الفاتورة:</span>
+            <span style="font-weight:900;">${Math.max(0, debtAfterInvoice).toFixed(2)} ${storeSettings.currency}</span>
+          </div>
         </div>
       ` : ''}
       ${order.items.some((i:any) => i.returned_quantity > 0) ? `
@@ -345,6 +375,10 @@ export default function Invoices() {
                           <div className="flex items-center gap-2 text-indigo-600 font-bold">
                             <CreditCard size={14} /> سداد مديونية آجل
                           </div>
+                        ) : order.type === 'previous_debt' ? (
+                          <div className="flex items-center gap-2 text-amber-600 font-bold">
+                            <FileText size={14} /> مديونية سابقة
+                          </div>
                         ) : (
                           <ul className="space-y-1">
                             {order.items.map(i => (
@@ -372,6 +406,10 @@ export default function Invoices() {
                         {order.type === 'payment' ? (
                           <span style={{ backgroundColor: storeSettings.themeColor + '15', color: storeSettings.themeColor }} className="inline-flex items-center gap-1 px-3 py-1 rounded-lg text-xs font-bold">
                             سداد آجل
+                          </span>
+                        ) : order.type === 'previous_debt' ? (
+                          <span className="inline-flex items-center gap-1 bg-amber-100 text-amber-700 px-3 py-1 rounded-lg text-xs font-bold">
+                            مديونية سابقة
                           </span>
                         ) : hasReturns ? (
                           <span className="inline-flex items-center gap-1 bg-red-100 text-red-600 px-3 py-1 rounded-lg text-xs font-bold">
